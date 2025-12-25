@@ -1,4 +1,4 @@
-// meter-tracker/client/src/pages/BillingCyclesPage.jsx
+// client/src/pages/BillingCyclesPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
@@ -11,11 +11,17 @@ const todayFormattedForInput = () => {
     return `${year}-${month}-${day}`;
 };
 
+// Formatting helper for display (e.g., "25 Oct 2023")
 const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Present';
     return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata'
+        day: 'numeric', month: 'short', year: 'numeric'
     });
+};
+
+const formatCurrency = (amount) => {
+    if (amount === undefined || amount === null) return '-';
+    return `₹${amount.toFixed(2)}`;
 };
 
 function BillingCyclesPage() {
@@ -62,7 +68,7 @@ function BillingCyclesPage() {
       setShowStartForm(false);
       setNewStartDate(todayFormattedForInput());
       setNewNotes('');
-      fetchBillingCycles(); // Refresh the list
+      fetchBillingCycles();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to start new cycle.');
     } finally {
@@ -85,7 +91,7 @@ function BillingCyclesPage() {
       const response = await apiClient.delete(`/billing-cycles/${cycleToDelete._id}`);
       toast.success(response.data.message || "Billing cycle deleted successfully.");
       closeDeleteConfirm();
-      fetchBillingCycles(); // Refresh the list
+      fetchBillingCycles();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete billing cycle.");
     } finally {
@@ -99,14 +105,13 @@ function BillingCyclesPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Billing Cycles</h1>
-        {/* Only show "Start New Cycle" button if no other cycle is currently active */}
         {!hasActiveCycle && (
           <button
             onClick={() => setShowStartForm(true)}
-            className="w-full sm:w-auto flex-shrink-0 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150"
+            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors"
           >
             + Start New Billing Cycle
           </button>
@@ -115,11 +120,11 @@ function BillingCyclesPage() {
 
       {error && <div className="p-3 mb-4 text-red-700 bg-red-100 rounded-md">Error: {error}</div>}
 
-      {/* Start New Cycle Form Modal */}
+      {/* Start New Cycle Modal */}
       {showStartForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Start a New Billing Cycle</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Start New Billing Cycle</h3>
             <form onSubmit={handleStartNewCycle} className="space-y-4">
               <div>
                 <label htmlFor="newStartDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-500">*</span></label>
@@ -144,13 +149,13 @@ function BillingCyclesPage() {
         </div>
       )}
       
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {cycleToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-1">Are you sure you want to delete the billing cycle starting on <strong className="text-gray-900">{formatDate(cycleToDelete.startDate)}</strong>?</p>
-            <p className="text-sm text-red-500 my-4">This action cannot be undone. You can only delete a cycle if no readings are attached to it.</p>
+            <p className="text-gray-600 mb-1">Delete cycle starting <strong className="text-gray-900">{formatDate(cycleToDelete.startDate)}</strong>?</p>
+            <p className="text-sm text-red-500 my-4">Action cannot be undone. Only empty cycles can be deleted.</p>
             <div className="flex justify-end space-x-3">
               <button onClick={closeDeleteConfirm} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
               <button onClick={handleConfirmDelete} disabled={isSubmitting} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50">
@@ -161,45 +166,71 @@ function BillingCyclesPage() {
         </div>
       )}
 
-
-      <div className="shadow-md rounded-lg overflow-x-auto bg-white">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Start Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">End Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Notes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {Array.isArray(billingCycles) && billingCycles.length > 0 ? (
-              billingCycles.map((cycle) => (
-                <tr key={cycle._id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-800 font-medium">{formatDate(cycle.startDate)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{formatDate(cycle.endDate)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cycle.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {cycle.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate" title={cycle.notes}>{cycle.notes || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-3">
-                    {/* <button className="text-indigo-600 hover:text-indigo-900">Edit</button> */}
-                    <button onClick={() => openDeleteConfirm(cycle)} className="text-red-600 hover:text-red-900 disabled:text-gray-400" disabled={cycle.status === 'active'} title={cycle.status === 'active' ? "Cannot delete an active cycle" : "Delete cycle"}>Delete</button>
-                  </td>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-slate-50">
+                <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Billing Period</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Consumption</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cost</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="text-center py-10 text-gray-500">
-                  No billing cycles found. Click "Start New Billing Cycle" to begin.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+                {Array.isArray(billingCycles) && billingCycles.length > 0 ? (
+                billingCycles.map((cycle) => (
+                    <tr key={cycle._id} className={`transition-colors ${cycle.status === 'active' ? 'bg-indigo-50 hover:bg-indigo-100' : 'hover:bg-slate-50'}`}>
+                    {/* --- UPDATED: Merged Date Column --- */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">
+                            {formatDate(cycle.startDate)} 
+                            <span className="text-gray-400 mx-2">➔</span> 
+                            {formatDate(cycle.endDate)}
+                        </div>
+                        {cycle.status === 'active' && (
+                            <div className="text-xs text-indigo-600 font-medium mt-1">Currently Active</div>
+                        )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${cycle.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {cycle.status}
+                        </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {cycle.totalUnits !== undefined ? `${cycle.totalUnits} units` : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {formatCurrency(cycle.totalCost)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] truncate" title={cycle.notes}>
+                        {cycle.notes || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button 
+                            onClick={() => openDeleteConfirm(cycle)} 
+                            className="text-red-600 hover:text-red-900 disabled:text-gray-300 disabled:cursor-not-allowed" 
+                            disabled={cycle.status === 'active'} 
+                            title={cycle.status === 'active' ? "Active cycles cannot be deleted" : "Delete this cycle"}
+                        >
+                            Delete
+                        </button>
+                    </td>
+                    </tr>
+                ))
+                ) : (
+                <tr>
+                    <td colSpan="6" className="text-center py-12 text-gray-500">
+                    <p className="text-lg mb-2">No billing cycles found.</p>
+                    <p className="text-sm">Click the button above to start your first cycle.</p>
+                    </td>
+                </tr>
+                )}
+            </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );

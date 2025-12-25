@@ -1,130 +1,142 @@
-// meter-tracker/controllers/billingCycleController.js
+// meter-tracker/server/controllers/billingCycleController.js
 const BillingCycle = require('../models/BillingCycle');
 const Reading = require('../models/Reading');
-const SlabRateConfig = require('../models/SlabRateConfig'); // Needed for slab rate snapshot
+const SlabRateConfig = require('../models/SlabRateConfig');
 
-// @desc    Start a new billing cycle (manually, or called when an old one closes)
+// Helper to calculate cost (Same logic as Analytics to ensure matching numbers)
+function calculateCostForConsumption(consumedUnits, slabConfig) {
+    if (!slabConfig || consumedUnits <= 0) { return 0; }
+    let totalCost = 0;
+    
+    const applicableSlabs = consumedUnits <= 500 ? slabConfig.slabsLessThanOrEqual500 : slabConfig.slabsGreaterThan500;
+    const sortedSlabs = [...applicableSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
+    
+    let billedUnitsInPreviousTiers = 0;
+    
+    for (const slab of sortedSlabs) {
+        if (consumedUnits > (slab.fromUnit - 1)) {
+            const unitsInThisSlab = Math.min(consumedUnits, slab.toUnit) - Math.max(billedUnitsInPreviousTiers, slab.fromUnit - 1);
+            if (unitsInThisSlab > 0) {
+                totalCost += unitsInThisSlab * slab.rate;
+                billedUnitsInPreviousTiers += unitsInThisSlab;
+            }
+        }
+        if (billedUnitsInPreviousTiers >= consumedUnits) break;
+    }
+    return parseFloat(totalCost.toFixed(2));
+}
+
+// @desc    Start a new billing cycle
 // @route   POST /api/billing-cycles/start
-// @access  Public
 exports.startNewBillingCycle = async (req, res) => {
   try {
     const { startDate, notes } = req.body;
+    if (!startDate) return res.status(400).json({ message: 'Start date is required.' });
 
-    if (!startDate) {
-      return res.status(400).json({ message: 'Start date is required.' });
-    }
-
-    // Ensure no other cycle is currently active before starting a new one.
-    // The "closeCurrentBillingCycle" endpoint is the preferred way to manage this transition.
     const existingActiveCycle = await BillingCycle.findOne({ status: 'active' });
     if (existingActiveCycle) {
       return res.status(400).json({
-        message: `An active billing cycle (ID: ${existingActiveCycle._id}) already exists starting ${existingActiveCycle.startDate}. Please close it before starting a new one.`,
+        message: `An active billing cycle already exists starting ${existingActiveCycle.startDate}. Please close it first.`,
       });
     }
 
-    // Optionally, find the currently active slab rate config to associate
-    // const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
-    // let slabRateConfigId = activeSlabConfig ? activeSlabConfig._id : null;
-
-    const newCycle = new BillingCycle({
-      startDate,
-      notes,
-      status: 'active',
-      // slabRateConfigId // Store if you want to snapshot the rates used for this cycle
-    });
-
+    const newCycle = new BillingCycle({ startDate, notes, status: 'active' });
     const savedCycle = await newCycle.save();
     res.status(201).json(savedCycle);
   } catch (error) {
     console.error('Error starting new billing cycle:', error);
-    res.status(500).json({ message: 'Server error while starting new billing cycle.' });
+    res.status(500).json({ message: 'Server error.' });
   }
 };
 
-// @desc    Close the current active billing cycle and start a new one
+// @desc    Close the current active billing cycle
 // @route   POST /api/billing-cycles/close-current
-// @access  Public
 exports.closeCurrentBillingCycle = async (req, res) => {
   try {
     const { governmentCollectionDate, notesForClosedCycle, notesForNewCycle } = req.body;
-
-    if (!governmentCollectionDate) {
-      return res.status(400).json({ message: 'Government collection date is required to close a cycle.' });
-    }
+    if (!governmentCollectionDate) return res.status(400).json({ message: 'Government collection date is required.' });
 
     const collectionDate = new Date(governmentCollectionDate);
-
     const currentActiveCycle = await BillingCycle.findOne({ status: 'active' });
 
-    if (!currentActiveCycle) {
-      return res.status(404).json({ message: 'No active billing cycle found to close.' });
-    }
+    if (!currentActiveCycle) return res.status(404).json({ message: 'No active billing cycle found.' });
+    if (collectionDate < currentActiveCycle.startDate) return res.status(400).json({ message: 'Collection date cannot be before start date.' });
 
-    if (collectionDate < currentActiveCycle.startDate) {
-        return res.status(400).json({ message: 'Government collection date cannot be before the active cycle\'s start date.' });
-    }
-
-    // Close the current cycle
+    // Close current
     currentActiveCycle.endDate = collectionDate;
     currentActiveCycle.governmentCollectionDate = collectionDate;
     currentActiveCycle.status = 'closed';
     if (notesForClosedCycle) currentActiveCycle.notes = notesForClosedCycle;
-    // Here you would typically trigger calculation of final consumption and costs for this cycle.
-    // For now, we just save it. Calculation will be done when fetching readings.
     await currentActiveCycle.save();
 
-    // Start a new billing cycle
-    // The new cycle starts on the day the old one was collected
-    const newCycleStartDate = collectionDate;
-
+    // Start new
     const newCycle = new BillingCycle({
-      startDate: newCycleStartDate,
+      startDate: collectionDate,
       status: 'active',
       notes: notesForNewCycle || 'New cycle started automatically.'
     });
     const savedNewCycle = await newCycle.save();
 
-    res.status(200).json({
-      message: 'Billing cycle closed and new one started successfully.',
-      closedCycle: currentActiveCycle,
-      newActiveCycle: savedNewCycle,
-    });
+    res.status(200).json({ message: 'Cycle closed and new one started.', closedCycle: currentActiveCycle, newActiveCycle: savedNewCycle });
   } catch (error) {
-    console.error('Error closing current billing cycle:', error);
-    res.status(500).json({ message: 'Server error while closing billing cycle.' });
+    console.error('Error closing cycle:', error);
+    res.status(500).json({ message: 'Server error.' });
   }
 };
 
 // @desc    Get the current active billing cycle
 // @route   GET /api/billing-cycles/active
-// @access  Public
 exports.getActiveBillingCycle = async (req, res) => {
   try {
     const activeCycle = await BillingCycle.findOne({ status: 'active' });
-    if (!activeCycle) {
-      // If no active cycle, maybe offer to create one or return appropriate status
-      // For now, let's prompt the user to create one if none exists.
-      const totalCycles = await BillingCycle.countDocuments();
-      if (totalCycles === 0) {
-         return res.status(404).json({ message: 'No billing cycles found. Please start the first billing cycle.' });
-      }
-      return res.status(404).json({ message: 'No active billing cycle found. Please ensure a cycle is marked active or start a new one after closing the previous.' });
-    }
+    if (!activeCycle) return res.status(404).json({ message: 'No active billing cycle found.' });
     res.status(200).json(activeCycle);
   } catch (error) {
-    console.error('Error fetching active billing cycle:', error);
+    console.error('Error fetching active cycle:', error);
     res.status(500).json({ message: 'Server error.' });
   }
 };
 
-// @desc    Get all billing cycles (paginated or sorted)
+// @desc    Get all billing cycles WITH calculated totals
 // @route   GET /api/billing-cycles
-// @access  Public
 exports.getAllBillingCycles = async (req, res) => {
   try {
-    const cycles = await BillingCycle.find().sort({ startDate: -1 }); // Show newest first
-    res.status(200).json(cycles);
+    // 1. Fetch raw cycles
+    const cycles = await BillingCycle.find().sort({ startDate: -1 }).lean();
+    
+    // 2. Fetch active rates for calculation
+    const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
+
+    // 3. Enhance each cycle with calculations
+    const enrichedCycles = await Promise.all(cycles.map(async (cycle) => {
+        // Get all readings for this cycle
+        const readings = await Reading.find({ billingCycle: cycle._id });
+
+        // Group consumption by meter (to apply "Sum of Individual Bills" logic)
+        const meterConsumptionMap = {};
+        readings.forEach(r => {
+            const mId = r.meter.toString();
+            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + r.unitsConsumedSincePrevious;
+        });
+
+        let totalUnits = 0;
+        let totalCost = 0;
+
+        // Calculate cost for each meter individually and sum them up
+        Object.values(meterConsumptionMap).forEach(units => {
+            totalUnits += units;
+            const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
+            totalCost += cost;
+        });
+
+        return {
+            ...cycle,
+            totalUnits: parseFloat(totalUnits.toFixed(2)),
+            totalCost: parseFloat(totalCost.toFixed(2))
+        };
+    }));
+
+    res.status(200).json(enrichedCycles);
   } catch (error) {
     console.error('Error fetching all billing cycles:', error);
     res.status(500).json({ message: 'Server error.' });
@@ -133,93 +145,48 @@ exports.getAllBillingCycles = async (req, res) => {
 
 // @desc    Get a single billing cycle by ID
 // @route   GET /api/billing-cycles/:id
-// @access  Public
 exports.getBillingCycleById = async (req, res) => {
     try {
         const cycle = await BillingCycle.findById(req.params.id);
-        if (!cycle) {
-            return res.status(404).json({ message: 'Billing cycle not found.' });
-        }
+        if (!cycle) return res.status(404).json({ message: 'Billing cycle not found.' });
         res.status(200).json(cycle);
     } catch (error) {
-        console.error('Error fetching billing cycle by ID:', error);
         res.status(500).json({ message: 'Server error.' });
     }
 };
 
-// @desc    Update a billing cycle (e.g., notes, or correcting dates if needed, carefully)
+// @desc    Update a billing cycle
 // @route   PUT /api/billing-cycles/:id
-// @access  Public
 exports.updateBillingCycle = async (req, res) => {
     try {
-        const { startDate, endDate, governmentCollectionDate, notes, status } = req.body;
-        const cycleId = req.params.id;
-
-        const cycle = await BillingCycle.findById(cycleId);
-        if (!cycle) {
-            return res.status(404).json({ message: 'Billing cycle not found.' });
-        }
-
-        // Basic validation: endDate should not be before startDate
-        if (endDate && startDate && new Date(endDate) < new Date(startDate)) {
-            return res.status(400).json({ message: 'End date cannot be before start date.' });
-        }
-        if (endDate && cycle.startDate && new Date(endDate) < new Date(cycle.startDate)) {
-             return res.status(400).json({ message: 'End date cannot be before cycle\'s start date.' });
-        }
-         if (startDate && cycle.endDate && new Date(cycle.endDate) < new Date(startDate)) {
-             return res.status(400).json({ message: 'Start date cannot be after cycle\'s end date.' });
-        }
-
-
-        // If trying to set this cycle to 'active', ensure no other cycle is active
-        if (status === 'active' && cycle.status !== 'active') {
-            const existingActive = await BillingCycle.findOne({ status: 'active', _id: { $ne: cycleId } });
-            if (existingActive) {
-                return res.status(400).json({ message: `Another cycle (ID: ${existingActive._id}) is already active. Cannot set this one to active.` });
-            }
-        }
-
-        // Update fields
-        if (startDate) cycle.startDate = startDate;
-        if (endDate !== undefined) cycle.endDate = endDate; // Allow null
-        if (governmentCollectionDate !== undefined) cycle.governmentCollectionDate = governmentCollectionDate; // Allow null
-        if (notes !== undefined) cycle.notes = notes;
-        if (status) cycle.status = status;
-
-        const updatedCycle = await cycle.save();
-        res.status(200).json(updatedCycle);
-
+        const cycle = await BillingCycle.findById(req.params.id);
+        if (!cycle) return res.status(404).json({ message: 'Not found.' });
+        
+        // Simple update logic for now
+        Object.assign(cycle, req.body);
+        await cycle.save();
+        res.status(200).json(cycle);
     } catch (error) {
-        console.error('Error updating billing cycle:', error);
-        res.status(500).json({ message: 'Server error while updating billing cycle.' });
+        res.status(500).json({ message: 'Server error.' });
     }
 };
 
+// @desc    Delete a billing cycle
+// @route   DELETE /api/billing-cycles/:id
 exports.deleteBillingCycle = async (req, res) => {
   try {
     const cycleId = req.params.id;
     const cycleToDelete = await BillingCycle.findById(cycleId);
+    if (!cycleToDelete) return res.status(404).json({ message: 'Not found.' });
 
-    if (!cycleToDelete) {
-      return res.status(404).json({ message: 'Billing cycle not found.' });
-    }
-
-    // IMPORTANT: Check for associated readings before deleting
     const associatedReadingsCount = await Reading.countDocuments({ billingCycle: cycleId });
-
     if (associatedReadingsCount > 0) {
-      return res.status(400).json({
-        message: `Cannot delete this billing cycle because it has ${associatedReadingsCount} reading(s) associated with it. Please delete the readings first.`,
-      });
+      return res.status(400).json({ message: `Cannot delete cycle with ${associatedReadingsCount} readings.` });
     }
 
     await BillingCycle.findByIdAndDelete(cycleId);
-
-    res.status(200).json({ message: 'Billing cycle deleted successfully.' });
-
+    res.status(200).json({ message: 'Deleted successfully.' });
   } catch (error) {
-    console.error('Error deleting billing cycle:', error);
-    res.status(500).json({ message: 'Server error while deleting billing cycle.' });
+    res.status(500).json({ message: 'Server error.' });
   }
 };

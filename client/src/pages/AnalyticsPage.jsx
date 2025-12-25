@@ -1,11 +1,39 @@
-// meter-tracker/client/src/pages/AnalyticsPage.jsx
-import React, { useState, useEffect, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+// client/src/pages/AnalyticsPage.jsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  BarChart, Bar, LineChart, Line, ComposedChart, 
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 
-// A set of predefined colors for the stacked bar chart
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+// Professional color palette matching the design
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+// Custom Tooltip for the 100% Stacked Chart
+const CustomBreakdownTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-md text-sm">
+        <p className="font-bold text-slate-700 mb-2">{label}</p>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+            <span className="text-slate-600">{entry.name}:</span>
+            <span className="font-semibold">
+              {entry.value.toFixed(0)} units 
+              {/* Calculate percentage relative to this specific stack's total */}
+              <span className="text-slate-400 ml-1 text-xs">
+                ({(entry.value / payload.reduce((acc, p) => acc + p.value, 0) * 100).toFixed(0)}%)
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 function AnalyticsPage() {
   const [cycleSummaryData, setCycleSummaryData] = useState([]);
@@ -19,27 +47,20 @@ function AnalyticsPage() {
       setLoading(true);
       setError(null);
       
-      // Fetch data for both charts in parallel for efficiency
       const [summaryRes, breakdownRes] = await Promise.all([
         apiClient.get('/analytics/cycle-summary'),
         apiClient.get('/analytics/meter-breakdown')
       ]);
 
-      // Set data for the first chart
       setCycleSummaryData(Array.isArray(summaryRes.data) ? summaryRes.data : []);
       
-      // Set data for the new stacked bar chart
       const breakdownData = Array.isArray(breakdownRes.data) ? breakdownRes.data : [];
       setMeterBreakdownData(breakdownData);
 
-      // Dynamically get all unique meter names from the breakdown data
-      // This is needed to create a <Bar> component for each meter
       if (breakdownData.length > 0) {
         const allKeys = breakdownData.reduce((keys, item) => {
           Object.keys(item).forEach(key => {
-            if (key !== 'name') { // 'name' is the cycle label, not a meter
-              keys.add(key);
-            }
+            if (key !== 'name') keys.add(key);
           });
           return keys;
         }, new Set());
@@ -47,9 +68,10 @@ function AnalyticsPage() {
       }
 
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to fetch analytics data.';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      console.error("Analytics Error:", err);
+      if (err.response?.status !== 404) {
+          setError('Failed to fetch analytics data.');
+      }
     } finally {
       setLoading(false);
     }
@@ -59,10 +81,38 @@ function AnalyticsPage() {
     fetchAnalyticsData();
   }, [fetchAnalyticsData]);
 
-  const formatCurrencyForAxis = (value) => `₹${value}`;
+  // --- Calculate Summary Statistics ---
+  const summaryStats = useMemo(() => {
+    if (!cycleSummaryData.length) return null;
+
+    const totalConsumption = cycleSummaryData.reduce((acc, curr) => acc + curr.totalConsumption, 0);
+    const totalCost = cycleSummaryData.reduce((acc, curr) => acc + curr.totalCost, 0);
+    const avgCost = totalCost / cycleSummaryData.length;
+
+    // Find most active meter
+    let highestMeter = { name: 'N/A', total: 0 };
+    if (meterBreakdownData.length > 0 && meterNames.length > 0) {
+        const meterTotals = {};
+        meterBreakdownData.forEach(cycle => {
+            meterNames.forEach(name => {
+                meterTotals[name] = (meterTotals[name] || 0) + (cycle[name] || 0);
+            });
+        });
+        const sortedMeters = Object.entries(meterTotals).sort((a, b) => b[1] - a[1]);
+        if (sortedMeters.length > 0) {
+            highestMeter = { name: sortedMeters[0][0], total: sortedMeters[0][1] };
+        }
+    }
+
+    return { totalConsumption, avgCost, highestMeter };
+  }, [cycleSummaryData, meterBreakdownData, meterNames]);
+
+
+  const toPercent = (decimal, fixed = 0) => `${(decimal * 100).toFixed(fixed)}%`;
+  const formatCurrencyAxis = (value) => `₹${value}`;
 
   if (loading) {
-    return <div className="p-6 text-center"><p className="text-lg text-gray-600">Loading Analytics Data...</p></div>;
+    return <div className="p-6 text-center"><p className="text-lg text-gray-600">Loading Analytics...</p></div>;
   }
 
   if (error) {
@@ -70,82 +120,103 @@ function AnalyticsPage() {
   }
   
   return (
-    <div className="p-4 sm:p-6 space-y-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Analytics</h1>
+    <div className="p-4 sm:p-6 space-y-8 bg-slate-50 min-h-screen">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Analytics Dashboard</h1>
 
-      {/* --- NEW: Meter Consumption Breakdown Chart --- */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-6">Meter Consumption Breakdown per Cycle</h2>
-        
-        {meterBreakdownData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart
-              data={meterBreakdownData}
-              margin={{ top: 5, right: 20, left: 20, bottom: 50 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                interval={0}
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis label={{ value: 'Units (units)', angle: -90, position: 'insideLeft' }} />
-              <Tooltip formatter={(value) => `${value.toFixed(2)} units`} />
-              <Legend verticalAlign="top" height={36} />
-              
-              {/* Dynamically create a <Bar> for each meter */}
-              {meterNames.map((meterName, index) => (
-                <Bar 
-                  key={meterName} 
-                  dataKey={meterName} 
-                  stackId="a" // This makes the bars stack on top of each other
-                  fill={COLORS[index % COLORS.length]} // Cycle through our predefined colors
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-center text-gray-500 py-10">
-            No meter breakdown data available. At least one billing cycle must be closed to see data here.
-          </p>
-        )}
-      </div>
+      {/* --- Summary Cards --- */}
+      {summaryStats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Consumption (All Time)</p>
+                <p className="text-3xl font-bold text-slate-800 mt-2">
+                    {summaryStats.totalConsumption.toLocaleString()} <span className="text-lg text-slate-400 font-normal">Units</span>
+                </p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Average Cycle Cost</p>
+                <p className="text-3xl font-bold text-slate-800 mt-2">
+                    ₹{summaryStats.avgCost.toFixed(0).toLocaleString()}
+                </p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Most Active Meter</p>
+                <p className="text-2xl font-bold text-indigo-600 mt-2 truncate">
+                    {summaryStats.highestMeter.name}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                    {summaryStats.highestMeter.total.toFixed(0)} units total
+                </p>
+            </div>
+        </div>
+      )}
 
-      {/* --- Existing Consumption & Cost Chart --- */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-6">Total Consumption & Cost per Cycle</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {cycleSummaryData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart
-              data={cycleSummaryData}
-              margin={{ top: 5, right: 20, left: 20, bottom: 50 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                interval={0}
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis yAxisId="left" orientation="left" stroke="#8884d8" label={{ value: 'Units (units)', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" tickFormatter={formatCurrencyForAxis} label={{ value: 'Cost (₹)', angle: -90, position: 'insideRight' }}/>
-              <Tooltip formatter={(value, name) => name === 'Total Cost (₹)' ? `₹${value.toFixed(2)}` : `${value} units`} />
-              <Legend verticalAlign="top" height={36} />
-              <Bar yAxisId="left" dataKey="totalConsumption" name="Total Consumption (units)" fill="#8884d8" />
-              <Bar yAxisId="right" dataKey="totalCost" name="Total Cost (₹)" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-center text-gray-500 py-10">
-            No total consumption data available.
-          </p>
-        )}
+        {/* --- Chart 1: Meter Breakdown (100% Stacked) --- */}
+        <div className="bg-white shadow-md rounded-xl p-6 border border-slate-100 flex flex-col">
+            <h2 className="text-lg font-semibold text-slate-700 mb-6">Meter Consumption Breakdown</h2>
+            <div className="flex-grow">
+            {meterBreakdownData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                data={meterBreakdownData}
+                margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                stackOffset="expand" // This makes it a 100% stacked chart
+                >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{fontSize: 12}} interval={0} angle={-45} textAnchor="end" height={70} />
+                <YAxis tickFormatter={toPercent} tick={{fontSize: 12}} />
+                <Tooltip content={<CustomBreakdownTooltip />} />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                
+                {meterNames.map((meterName, index) => (
+                    <Bar 
+                    key={meterName} 
+                    dataKey={meterName} 
+                    stackId="a" 
+                    fill={COLORS[index % COLORS.length]} 
+                    />
+                ))}
+                </BarChart>
+            </ResponsiveContainer>
+            ) : (
+            <div className="h-64 flex items-center justify-center text-slate-400">No meter data available</div>
+            )}
+            </div>
+        </div>
+
+        {/* --- Chart 2: Consumption vs Cost (Composed Chart) --- */}
+        <div className="bg-white shadow-md rounded-xl p-6 border border-slate-100 flex flex-col">
+            <h2 className="text-lg font-semibold text-slate-700 mb-6">Total Consumption & Cost</h2>
+            <div className="flex-grow">
+            {cycleSummaryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart
+                data={cycleSummaryData}
+                margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{fontSize: 12}} interval={0} angle={-45} textAnchor="end" height={70} />
+                
+                {/* Left Y-Axis: Units */}
+                <YAxis yAxisId="left" label={{ value: 'Units', angle: -90, position: 'insideLeft' }} />
+                
+                {/* Right Y-Axis: Cost */}
+                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrencyAxis} />
+                
+                <Tooltip />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                
+                <Bar yAxisId="left" dataKey="totalConsumption" name="Consumption (Units)" fill="#3B82F6" barSize={40} radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="totalCost" name="Cost (₹)" stroke="#10B981" strokeWidth={3} dot={{r: 4}} />
+                </ComposedChart>
+            </ResponsiveContainer>
+            ) : (
+            <div className="h-64 flex items-center justify-center text-slate-400">No summary data available</div>
+            )}
+            </div>
+        </div>
+
       </div>
     </div>
   );

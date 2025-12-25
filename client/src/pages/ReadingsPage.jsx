@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import AddReadingForm from '../components/AddReadingForm';
+import { toast } from 'react-toastify'; // Import toast
 
 function ReadingsPage() {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null); // Keep specific error for initial load failure
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalReadings, setTotalReadings] = useState(0);
@@ -22,12 +23,9 @@ function ReadingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [readingToDelete, setReadingToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(null);
 
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [deleteAllError, setDeleteAllError] = useState(null);
-  const [deleteAllSuccess, setDeleteAllSuccess] = useState('');
   const [deleteAllConfirmationText, setDeleteAllConfirmationText] = useState('');
   const DELETE_ALL_CONFIRM_PHRASE = "DELETE ALL MY READINGS";
 
@@ -35,9 +33,6 @@ function ReadingsPage() {
     try {
       setLoading(true);
       setError(null);
-      setDeleteError(null);
-      setDeleteAllError(null);
-      setDeleteAllSuccess('');
 
       const params = {
         page: page,
@@ -50,8 +45,7 @@ function ReadingsPage() {
 
       const response = await apiClient.get('/readings', { params });
       
-      // --- THE FIX ---
-      // Ensure that what we set is always an array
+      // Robust check to prevent crashes
       setReadings(Array.isArray(response.data.readings) ? response.data.readings : []);
       
       setTotalPages(response.data.totalPages || 1);
@@ -59,8 +53,10 @@ function ReadingsPage() {
       setCurrentPage(response.data.currentPage || page);
     } catch (err) {
       console.error("Error fetching readings:", err);
-      setError(err.response?.data?.message || err.message || 'Failed to fetch readings.');
-      setReadings([]); // Also ensure readings is an empty array on error
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch readings.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setReadings([]); 
     } finally {
       setLoading(false);
     }
@@ -69,12 +65,11 @@ function ReadingsPage() {
   const fetchMeters = useCallback(async () => {
     try {
       const response = await apiClient.get('/meters');
-      // --- THE FIX ---
-      // Ensure that what we set is always an array
       setAvailableMeters(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching meters:", err);
-      setAvailableMeters([]); // Ensure it's an empty array on error
+      toast.error("Failed to fetch meters list.");
+      setAvailableMeters([]);
     }
   }, []);
 
@@ -107,7 +102,6 @@ function ReadingsPage() {
   const openDeleteConfirm = (reading) => {
     setReadingToDelete(reading);
     setShowDeleteConfirm(true);
-    setDeleteError(null);
   };
 
   const closeDeleteConfirm = () => {
@@ -118,9 +112,9 @@ function ReadingsPage() {
   const handleDeleteReading = async () => {
     if (!readingToDelete) return;
     setIsDeleting(true);
-    setDeleteError(null);
     try {
       await apiClient.delete(`/readings/${readingToDelete._id}`);
+      toast.success('Reading deleted successfully.');
       closeDeleteConfirm();
       const currentFilters = {
         meterId: filterMeterId,
@@ -134,7 +128,7 @@ function ReadingsPage() {
       }
     } catch (err) {
       console.error("Error deleting reading:", err);
-      setDeleteError(err.response?.data?.message || err.message || "Failed to delete reading.");
+      toast.error(err.response?.data?.message || "Failed to delete reading.");
     } finally {
       setIsDeleting(false);
     }
@@ -142,8 +136,6 @@ function ReadingsPage() {
 
   const openDeleteAllConfirmModal = () => {
     setShowDeleteAllConfirm(true);
-    setDeleteAllError(null);
-    setDeleteAllSuccess('');
     setDeleteAllConfirmationText('');
   };
 
@@ -154,26 +146,23 @@ function ReadingsPage() {
 
   const handleConfirmDeleteAllReadings = async () => {
     if (deleteAllConfirmationText !== DELETE_ALL_CONFIRM_PHRASE) {
-      setDeleteAllError(`Incorrect phrase. Please type "${DELETE_ALL_CONFIRM_PHRASE}" to confirm.`);
+      toast.warn(`Incorrect phrase. Please type "${DELETE_ALL_CONFIRM_PHRASE}" to confirm.`);
       return;
     }
     setIsDeletingAll(true);
-    setDeleteAllError(null);
-    setDeleteAllSuccess('');
     try {
       const response = await apiClient.delete('/readings/action/delete-all-globally');
-      setDeleteAllSuccess(response.data.message || `${response.data.deletedCount} readings deleted successfully.`);
+      toast.success(response.data.message || `${response.data.deletedCount} readings deleted successfully.`);
       closeDeleteAllConfirmModal();
       setCurrentPage(1);
       fetchReadings(1, {});
     } catch (err) {
       console.error("Error deleting all readings:", err);
-      setDeleteAllError(err.response?.data?.message || err.message || "Failed to delete all readings.");
+      toast.error(err.response?.data?.message || "Failed to delete all readings.");
     } finally {
       setIsDeletingAll(false);
     }
   };
-
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -219,7 +208,6 @@ function ReadingsPage() {
               className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="">All Meters</option>
-              {/* --- THE FIX --- */}
               {Array.isArray(availableMeters) && availableMeters.map(meter => (<option key={meter._id} value={meter._id}>{meter.name}</option>))}
             </select>
           </div>
@@ -243,10 +231,6 @@ function ReadingsPage() {
         </div>
       </div>
 
-      {deleteError && <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-md">Error: {deleteError}</div>}
-      {deleteAllSuccess && <div className="my-4 p-3 text-sm text-green-700 bg-green-100 rounded-md">{deleteAllSuccess}</div>}
-      {deleteAllError && !showDeleteAllConfirm && <div className="my-4 p-3 text-sm text-red-700 bg-red-100 rounded-md">Error: {deleteAllError}</div>}
-
       <div className="my-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
             <div>
@@ -263,7 +247,6 @@ function ReadingsPage() {
       ) : error ? ( <div className="p-6 text-center"><p className="text-lg text-red-600">Error: {error}</p></div>
       ) : (
         <>
-          {/* --- THE FIX --- */}
           {Array.isArray(readings) && readings.length > 0 ? (
             <>
               <div className="shadow-md rounded-lg overflow-x-auto bg-white">
@@ -321,7 +304,6 @@ function ReadingsPage() {
             <p className="text-gray-600 mb-1">taken on <strong className="text-gray-900">{formatDate(readingToDelete.date)}</strong></p>
             <p className="text-gray-600 mb-6">with value <strong className="text-gray-900">{readingToDelete.readingValue} units</strong>?</p>
             <p className="text-sm text-red-500 mb-4">This action cannot be undone. It may affect calculations for subsequent readings.</p>
-            {deleteError && <div className="mb-4 p-2 text-sm text-red-700 bg-red-100 rounded-md">{deleteError}</div>}
             <div className="flex justify-end space-x-3">
               <button onClick={closeDeleteConfirm} disabled={isDeleting} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
               <button onClick={handleDeleteReading} disabled={isDeleting} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50">
@@ -343,7 +325,6 @@ function ReadingsPage() {
               placeholder="Type confirmation phrase here"
               className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:ring-red-500 focus:border-red-500"
             />
-            {deleteAllError && <div className="mb-4 p-2 text-sm text-red-700 bg-red-100 rounded-md">{deleteAllError}</div>}
             <div className="flex justify-end space-x-3">
               <button onClick={closeDeleteAllConfirmModal} disabled={isDeletingAll} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
               <button onClick={handleConfirmDeleteAllReadings} disabled={isDeletingAll || deleteAllConfirmationText !== DELETE_ALL_CONFIRM_PHRASE}

@@ -56,8 +56,7 @@ function DashboardPage() {
   const [notesForNewCycle, setNotesForNewCycle] = useState('');
   const [isClosingCycle, setIsClosingCycle] = useState(false);
 
-  // --- CONFIG: Target limit for progress bar ---
-  const CONSUMPTION_TARGET = 500; 
+  // Removed hardcoded CONSUMPTION_TARGET = 500
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -238,10 +237,13 @@ function DashboardPage() {
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-700">Meter Details</h2>
             {Array.isArray(dashboardData.meterSummaries) && dashboardData.meterSummaries.length > 0 ? (
               dashboardData.meterSummaries.map((meter) => {
-                // --- FIX: Calculate progress locally to prevent bar disappearing if > 500 units ---
-                const rawPercentage = (meter.currentCycleConsumption / CONSUMPTION_TARGET) * 100;
+                // --- FIX: Use dynamic consumptionTarget from backend ---
+                const target = meter.consumptionTarget || 500; // Fallback just in case
+                const rawPercentage = (meter.currentCycleConsumption / target) * 100;
                 const displayPercentage = Math.min(rawPercentage, 100).toFixed(0);
-                const remainingUnits = Math.max(0, CONSUMPTION_TARGET - meter.currentCycleConsumption).toFixed(2);
+                
+                // Show 0 if exceeded, calculated in backend anyway but safe to do here
+                const remainingUnits = meter.unitsRemainingToTarget; 
                 
                 return (
                   <div key={meter.meterId} 
@@ -267,7 +269,8 @@ function DashboardPage() {
                     {/* Progress Bar (Always visible now) */}
                     <div className="my-4">
                       <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
-                          <span>Progress to {CONSUMPTION_TARGET} Unit Limit</span>
+                          {/* Use dynamic target in label */}
+                          <span>Progress to {target} Unit Limit</span>
                           <span>{displayPercentage}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-4">
@@ -288,7 +291,8 @@ function DashboardPage() {
                             <p className="text-md font-semibold text-slate-700">{meter.previousCycleConsumption} units</p>
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500">Units to {CONSUMPTION_TARGET} Limit</p>
+                            {/* Use dynamic target in label */}
+                            <p className="text-xs text-slate-500">Units to {target} Limit</p>
                             <p className="text-md font-semibold text-slate-700">{remainingUnits} units</p>
                         </div>
                     </div>

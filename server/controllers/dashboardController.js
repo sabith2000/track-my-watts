@@ -1,23 +1,18 @@
-// meter-tracker/controllers/dashboardController.js
+// server/controllers/dashboardController.js
 const Meter = require('../models/Meter');
 const Reading = require('../models/Reading');
 const BillingCycle = require('../models/BillingCycle');
 const SlabRateConfig = require('../models/SlabRateConfig');
-const Setting = require('../models/Settings'); // --- NEW IMPORT ---
+const Setting = require('../models/Settings'); 
 
 // Helper function to calculate cost based on slabs
-// This function will be called for each meter's consumption
 function calculateCostForConsumption(consumedUnits, slabConfig) {
-    if (!slabConfig || consumedUnits < 0) {
-        return 0; // Or handle error appropriately
-    }
+    if (!slabConfig || consumedUnits < 0) return 0;
 
     let totalCost = 0;
     let unitsToBill = consumedUnits;
 
     const applicableSlabs = consumedUnits <= 500 ? slabConfig.slabsLessThanOrEqual500 : slabConfig.slabsGreaterThan500;
-
-    // Ensure slabs are sorted by fromUnit, just in case they aren't stored perfectly.
     const sortedSlabs = [...applicableSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
 
     let billedUnitsInPreviousTiers = 0;
@@ -25,11 +20,6 @@ function calculateCostForConsumption(consumedUnits, slabConfig) {
     for (const slab of sortedSlabs) {
         if (unitsToBill <= 0) break;
 
-        // Determine how many units fall into this current slab tier
-        const unitsInThisTierMax = slab.toUnit - (slab.fromUnit - 1);
-        const unitsBillableInThisTier = Math.min(unitsToBill, unitsInThisTierMax);
-
-        // Check if the consumption even reaches this slab
         if (consumedUnits > (slab.fromUnit - 1)) {
             const unitsActuallyInThisSlabSegment = Math.min(consumedUnits, slab.toUnit) - Math.max(billedUnitsInPreviousTiers, slab.fromUnit - 1);
 
@@ -38,18 +28,16 @@ function calculateCostForConsumption(consumedUnits, slabConfig) {
                 billedUnitsInPreviousTiers += unitsActuallyInThisSlabSegment;
             }
         } else {
-            break; // Consumption doesn't reach this slab
+            break;
         }
         if (billedUnitsInPreviousTiers >= consumedUnits) break;
-
     }
-    return parseFloat(totalCost.toFixed(2)); // Return cost rounded to 2 decimal places
+    return parseFloat(totalCost.toFixed(2));
 }
 
 
 // @desc    Get dashboard summary data
 // @route   GET /api/dashboard/summary
-// @access  Public
 exports.getDashboardSummary = async (req, res) => {
     try {
         const activeCycle = await BillingCycle.findOne({ status: 'active' });
@@ -61,13 +49,18 @@ exports.getDashboardSummary = async (req, res) => {
         const meters = await Meter.find();
         if (!meters || meters.length === 0) { return res.status(404).json({ message: 'No meters found.' }); }
 
-        // --- NEW: Fetch User Settings ---
+        // Fetch User Settings
         let settings = await Setting.findOne({ key: 'user_settings' });
         if (!settings) {
-            settings = new Setting(); // Create default settings if they don't exist
-            await settings.save();
+            settings = await Setting.findOne(); 
+            if (!settings) {
+                settings = await Setting.create({ 
+                    key: 'user_settings',
+                    consumptionTarget: 500 
+                });
+            }
         }
-        const consumptionTarget = settings.consumptionTarget; // Get the target value
+        const consumptionTarget = settings.consumptionTarget;
 
         const now = new Date();
         const cycleStartDate = new Date(activeCycle.startDate);
@@ -83,13 +76,17 @@ exports.getDashboardSummary = async (req, res) => {
             let currentCycleConsumption = 0;
             readingsInCurrentCycle.forEach(reading => { currentCycleConsumption += reading.unitsConsumedSincePrevious; });
             currentCycleConsumption = parseFloat(currentCycleConsumption.toFixed(2));
+            
             const currentCycleCost = calculateCostForConsumption(currentCycleConsumption, activeSlabConfig);
+            
+            // --- FIX: Add cost for ALL meters, not just general purpose ---
             currentCycleTotalBill += currentCycleCost;
+            // -------------------------------------------------------------
+            
             const averageDailyConsumption = daysInCycle > 0 ? parseFloat((currentCycleConsumption / daysInCycle).toFixed(2)) : 0;
             
-            // --- MODIFIED: Use the custom consumptionTarget ---
-            const unitsRemainingToTarget = currentCycleConsumption <= consumptionTarget ? parseFloat((consumptionTarget - currentCycleConsumption).toFixed(2)) : 0;
-            const percentageToTarget = currentCycleConsumption <= consumptionTarget ? parseFloat(((currentCycleConsumption / consumptionTarget) * 100).toFixed(2)) : 100;
+            const unitsRemainingToTarget = Math.max(0, consumptionTarget - currentCycleConsumption).toFixed(2);
+            const percentageToTarget = parseFloat(((currentCycleConsumption / consumptionTarget) * 100).toFixed(2));
 
             let previousCycleConsumption = 0;
             const previousCycle = await BillingCycle.findOne({ status: 'closed', endDate: { $lte: activeCycle.startDate }, _id: { $ne: activeCycle._id } }).sort({ endDate: -1 });
@@ -103,10 +100,9 @@ exports.getDashboardSummary = async (req, res) => {
                 meterId: meter._id, meterName: meter.name, meterType: meter.meterType,
                 isGeneralPurpose: meter.isGeneralPurpose, isCurrentlyActiveGeneral: meter.isCurrentlyActiveGeneral,
                 currentCycleConsumption, currentCycleCost, averageDailyConsumption,
-                // --- MODIFIED: Send new target-based values to frontend ---
                 unitsRemainingToTarget,
                 percentageToTarget,
-                consumptionTarget, // Also send the target itself for display
+                consumptionTarget, 
                 previousCycleConsumption
             });
         }
@@ -121,7 +117,8 @@ exports.getDashboardSummary = async (req, res) => {
             previousBillingCycle: overallPreviousCycle ? { id: overallPreviousCycle._id, startDate: overallPreviousCycle.startDate, endDate: overallPreviousCycle.endDate, status: overallPreviousCycle.status, notes: overallPreviousCycle.notes } : null,
             activeSlabConfiguration: { id: activeSlabConfig._id, configName: activeSlabConfig.configName, effectiveDate: activeSlabConfig.effectiveDate },
             meterSummaries,
-            currentCycleTotalBill: parseFloat(currentCycleTotalBill.toFixed(2))
+            currentCycleTotalBill: parseFloat(currentCycleTotalBill.toFixed(2)),
+            globalConsumptionTarget: consumptionTarget
         });
 
     } catch (error) {

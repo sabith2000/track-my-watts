@@ -35,6 +35,25 @@ function calculateCostForConsumption(consumedUnits, slabConfig) {
     return parseFloat(totalCost.toFixed(2));
 }
 
+// Helper: Determine Current Tier info
+function getCurrentTierInfo(consumedUnits, slabConfig) {
+    if (!slabConfig) return { rate: 0, label: 'N/A' };
+    const applicableSlabs = consumedUnits <= 500 ? slabConfig.slabsLessThanOrEqual500 : slabConfig.slabsGreaterThan500;
+    const sortedSlabs = [...applicableSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
+    
+    let currentSlab = sortedSlabs[0];
+    for (const slab of sortedSlabs) {
+        if (consumedUnits >= slab.fromUnit) {
+            currentSlab = slab;
+        } else {
+            break;
+        }
+    }
+    return {
+        rate: currentSlab ? currentSlab.rate : 0,
+        range: currentSlab ? `${currentSlab.fromUnit}-${currentSlab.toUnit === 999999 ? '∞' : currentSlab.toUnit}` : ''
+    };
+}
 
 // @desc    Get dashboard summary data
 // @route   GET /api/dashboard/summary
@@ -73,21 +92,46 @@ exports.getDashboardSummary = async (req, res) => {
 
         for (const meter of meters) {
             const readingsInCurrentCycle = await Reading.find({ meter: meter._id, billingCycle: activeCycle._id }).sort({ date: 'asc' });
+            
+            // 1. Calculate Consumption
             let currentCycleConsumption = 0;
-            readingsInCurrentCycle.forEach(reading => { currentCycleConsumption += reading.unitsConsumedSincePrevious; });
+            // Also prepare data for Sparkline (Group by Date)
+            const dailyConsumptionMap = {};
+            
+            readingsInCurrentCycle.forEach(reading => { 
+                currentCycleConsumption += reading.unitsConsumedSincePrevious; 
+                
+                // Sparkline logic: '2023-10-25'
+                const dateKey = new Date(reading.date).toISOString().split('T')[0];
+                dailyConsumptionMap[dateKey] = (dailyConsumptionMap[dateKey] || 0) + reading.unitsConsumedSincePrevious;
+            });
             currentCycleConsumption = parseFloat(currentCycleConsumption.toFixed(2));
             
+            // 2. Cost Calculation
             const currentCycleCost = calculateCostForConsumption(currentCycleConsumption, activeSlabConfig);
-            
-            // --- FIX: Add cost for ALL meters, not just general purpose ---
             currentCycleTotalBill += currentCycleCost;
-            // -------------------------------------------------------------
             
+            // 3. Stats
             const averageDailyConsumption = daysInCycle > 0 ? parseFloat((currentCycleConsumption / daysInCycle).toFixed(2)) : 0;
-            
             const unitsRemainingToTarget = Math.max(0, consumptionTarget - currentCycleConsumption).toFixed(2);
             const percentageToTarget = parseFloat(((currentCycleConsumption / consumptionTarget) * 100).toFixed(2));
 
+            // 4. Sparkline Generation (Last 7 Days)
+            const sparklineData = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = d.toISOString().split('T')[0];
+                sparklineData.push({
+                    name: key, // Date string
+                    value: parseFloat((dailyConsumptionMap[key] || 0).toFixed(2))
+                });
+            }
+
+            // 5. Current Tier Info
+            const currentTier = getCurrentTierInfo(currentCycleConsumption, activeSlabConfig);
+
+            // 6. Previous Cycle Data
             let previousCycleConsumption = 0;
             const previousCycle = await BillingCycle.findOne({ status: 'closed', endDate: { $lte: activeCycle.startDate }, _id: { $ne: activeCycle._id } }).sort({ endDate: -1 });
             if (previousCycle) {
@@ -103,7 +147,9 @@ exports.getDashboardSummary = async (req, res) => {
                 unitsRemainingToTarget,
                 percentageToTarget,
                 consumptionTarget, 
-                previousCycleConsumption
+                previousCycleConsumption,
+                sparklineData, // --- NEW ---
+                currentTier    // --- NEW ---
             });
         }
         

@@ -20,6 +20,9 @@ function SettingsPage() {
   // Settings State
   const [consumptionTarget, setConsumptionTarget] = useState(500);
   const [consumptionTargetInput, setConsumptionTargetInput] = useState('500');
+  
+  // Confirmation Modal State
+  const [showTargetConfirm, setShowTargetConfirm] = useState(false);
 
   // Slab Configs State
   const [slabConfigs, setSlabConfigs] = useState([]);
@@ -97,17 +100,44 @@ function SettingsPage() {
     finally { setIsUpdatingMeter(false); }
   };
 
-  // --- Handlers: Settings ---
-  const handleSaveSettings = async () => {
+  // --- Handlers: Settings (Target) ---
+  
+  const handleSaveSettingsClick = () => {
     const newTarget = parseInt(consumptionTargetInput, 10);
-    if (isNaN(newTarget) || newTarget <= 0) { toast.warn("Invalid target."); return; }
+    // Prevent opening modal if values are identical
+    if (newTarget === consumptionTarget) return; 
+
+    if (isNaN(newTarget) || newTarget <= 0) { 
+        toast.warn("Please enter a valid, positive number."); 
+        return; 
+    }
+    setShowTargetConfirm(true);
+  };
+
+  const confirmSaveSettings = async () => {
+    const newTarget = parseInt(consumptionTargetInput, 10);
     setIsUpdating(true);
     try {
       await apiClient.put('/settings', { consumptionTarget: newTarget });
-      toast.success("Target updated!");
+      toast.success("Consumption target updated successfully!");
       setConsumptionTarget(newTarget);
-    } catch (err) { toast.error("Failed to save settings."); } 
-    finally { setIsUpdating(false); }
+      setShowTargetConfirm(false); 
+    } catch (err) { 
+        toast.error("Failed to save settings."); 
+    } finally { 
+        setIsUpdating(false); 
+    }
+  };
+
+  const cancelSaveSettings = () => {
+      // Reset input to original value on Cancel
+      setShowTargetConfirm(false);
+      setConsumptionTargetInput(String(consumptionTarget));
+  };
+  
+  // --- NEW: Reset to Default Handler ---
+  const handleResetToDefault = () => {
+      setConsumptionTargetInput('500');
   };
 
   // --- Handlers: Slabs ---
@@ -122,6 +152,9 @@ function SettingsPage() {
     finally { setIsUpdatingSlab(false); }
   };
 
+  // Helper to check if button should be disabled
+  const isTargetChanged = parseInt(consumptionTargetInput, 10) !== consumptionTarget;
+
   return (
     <div className="p-4 sm:p-6 space-y-8">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Settings</h1>
@@ -133,11 +166,31 @@ function SettingsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700">Custom Consumption Target (units)</label>
             <input type="number" value={consumptionTargetInput} onChange={(e) => setConsumptionTargetInput(e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" />
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+            <p className="text-xs text-gray-500 mt-2">Default value: 500 units</p>
           </div>
-          <button onClick={handleSaveSettings} disabled={isUpdating} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            {isUpdating ? 'Saving...' : 'Save Target'}
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <button 
+                onClick={handleSaveSettingsClick} 
+                disabled={isUpdating || !isTargetChanged || !consumptionTargetInput} 
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+                {isUpdating ? 'Updating...' : 'Update Target'}
+            </button>
+
+            {/* --- NEW: Reset Button (only shows if input is not 500) --- */}
+            {consumptionTargetInput !== '500' && (
+                <button 
+                    onClick={handleResetToDefault}
+                    disabled={isUpdating}
+                    className="px-4 py-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium rounded-md transition-colors"
+                    title="Reset input to default 500 units"
+                >
+                    Reset to Default
+                </button>
+            )}
+          </div>
         </div>
       </div>
       
@@ -173,7 +226,7 @@ function SettingsPage() {
         </div>
       </div>
 
-      {/* 3. Active Meter Selector - RESTORED OLD UI */}
+      {/* 3. Active Meter Selector */}
       <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
         <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-1">Active General Purpose Meter</h2>
         <p className="text-sm text-gray-500 mb-4">Select which general purpose meter is currently in use.</p>
@@ -192,7 +245,7 @@ function SettingsPage() {
         </div>
       </div>
 
-      {/* 4. Slab Manager (Refactored Component) */}
+      {/* 4. Slab Manager */}
       <SlabRateManager 
         slabConfigs={slabConfigs} 
         selectedConfigId={selectedActiveSlabConfigId}
@@ -201,6 +254,35 @@ function SettingsPage() {
         onRefresh={fetchSlabConfigs}
         isUpdating={isUpdatingSlab}
       />
+
+      {/* Confirmation Modal */}
+      {showTargetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">Update Target?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to change the consumption target to <span className="font-bold text-indigo-600">{consumptionTargetInput} units</span>? 
+              <br/><br/>
+              <span className="text-xs text-gray-500">This will update the progress bars on your dashboard immediately.</span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={cancelSaveSettings} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmSaveSettings} 
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm"
+              >
+                Yes, Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

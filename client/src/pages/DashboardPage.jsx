@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
+import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts'; // For Sparklines
+import AddReadingForm from '../components/AddReadingForm'; // Reuse existing component
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -27,36 +29,26 @@ const todayFormattedForInput = () => {
 };
 
 // Icons
-const BillIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 015.25 4.5h-.75m-1.5 0v.75A.75.75 0 013 6h-.75m0 0h.75A.75.75 0 013.75 6v.75m0 0v-.75A.75.75 0 013.75 4.5h.75m9 13.5h3.375c.621 0 1.125-.504 1.125-1.125V9.11c0-.621-.504-1.125-1.125-1.125H9.75M12 15.75V9.113m0 0a3.001 3.001 0 00-3 0m3 0a3.001 3.001 0 01-3 0m0 0A3.001 3.001 0 009 9.113m0 0a3.001 3.001 0 013 0m0 0V3m6.12 3.03l.001.001M12 18.75M12 6.75h.008v.008H12V6.75z" />
-  </svg>
-);
-
-const ZapIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" />
-  </svg>
-);
+const BillIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 015.25 4.5h-.75m-1.5 0v.75A.75.75 0 013 6h-.75m0 0h.75A.75.75 0 013.75 6v.75m0 0v-.75A.75.75 0 013.75 4.5h.75m9 13.5h3.375c.621 0 1.125-.504 1.125-1.125V9.11c0-.621-.504-1.125-1.125-1.125H9.75M12 15.75V9.113m0 0a3.001 3.001 0 00-3 0m3 0a3.001 3.001 0 01-3 0m0 0A3.001 3.001 0 009 9.113m0 0a3.001 3.001 0 013 0m0 0V3m6.12 3.03l.001.001M12 18.75M12 6.75h.008v.008H12V6.75z" /></svg>);
+const ZapIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>);
+const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" /></svg>);
+const PlusIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>);
 
 function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Close Cycle Modal State
   const [showCloseCycleForm, setShowCloseCycleForm] = useState(false);
   const [governmentCollectionDate, setGovernmentCollectionDate] = useState(todayFormattedForInput());
   const [notesForClosedCycle, setNotesForClosedCycle] = useState('');
   const [notesForNewCycle, setNotesForNewCycle] = useState('');
   const [isClosingCycle, setIsClosingCycle] = useState(false);
 
-  // Removed hardcoded CONSUMPTION_TARGET = 500
+  // --- NEW: Add Reading Modal State ---
+  const [showAddReadingModal, setShowAddReadingModal] = useState(false);
+  const [selectedMeterForQuickAdd, setSelectedMeterForQuickAdd] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -78,6 +70,19 @@ function DashboardPage() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Handle opening Quick Add Modal
+  const openQuickAdd = (meter) => {
+      setSelectedMeterForQuickAdd(meter);
+      setShowAddReadingModal(true);
+  };
+
+  // Callback when reading is added successfully
+  const handleReadingAdded = () => {
+      setShowAddReadingModal(false);
+      setSelectedMeterForQuickAdd(null);
+      fetchDashboardData(); // Refresh dashboard to show new numbers
+  };
 
   const handleCloseCycleSubmit = async (e) => {
     e.preventDefault();
@@ -132,17 +137,19 @@ function DashboardPage() {
   if (!dashboardData && !loading) {
     return (
       <div className="p-6 text-center">
-        <p className="text-lg text-gray-600">No dashboard data available. This could be an issue with fetching data, or no active billing cycle/slab rates are set up in the backend.</p>
+        <p className="text-lg text-gray-600">No dashboard data available.</p>
         <button onClick={fetchDashboardData} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Try Reloading Data</button>
       </div>
     );
   }
 
-  // Calculate total consumption for the new summary card
   const totalCurrentConsumption = dashboardData?.meterSummaries ?
     Array.isArray(dashboardData.meterSummaries) ?
     dashboardData.meterSummaries.reduce((acc, meter) => acc + meter.currentCycleConsumption, 0) : 0
     : 0;
+
+  // Prepare list of meters for AddReadingForm (formatted for dropdown if needed)
+  const availableMetersForForm = dashboardData.meterSummaries.map(m => ({ _id: m.meterId, name: m.meterName, meterType: m.meterType }));
 
   return (
     <div className="p-4 sm:p-6 space-y-8">
@@ -156,9 +163,7 @@ function DashboardPage() {
         </div>
         {dashboardData?.currentBillingCycle?.status === 'active' && (
           <button
-            onClick={() => {
-              setShowCloseCycleForm(true);
-            }}
+            onClick={() => { setShowCloseCycleForm(true); }}
             className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow whitespace-nowrap transition-colors duration-200"
           >
             Close Current Billing Cycle
@@ -166,6 +171,27 @@ function DashboardPage() {
         )}
       </div>
       
+      {/* Quick Add Reading Modal */}
+      {showAddReadingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-700">Quick Add Reading</h3>
+                    <button onClick={() => setShowAddReadingModal(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
+                </div>
+                <div className="p-4">
+                    <AddReadingForm 
+                        onReadingAdded={handleReadingAdded}
+                        availableMeters={availableMetersForForm}
+                        initialMeterId={selectedMeterForQuickAdd?.meterId}
+                        isModal={true}
+                        onCancel={() => setShowAddReadingModal(false)}
+                    />
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* Close Cycle Modal */}
       {showCloseCycleForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -173,32 +199,23 @@ function DashboardPage() {
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-4">Close Current Billing Cycle</h2>
             <form onSubmit={handleCloseCycleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="governmentCollectionDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Government Collection Date <span className="text-red-500">*</span>
-                </label>
+                <label htmlFor="governmentCollectionDate" className="block text-sm font-medium text-gray-700 mb-1">Government Collection Date <span className="text-red-500">*</span></label>
                 <input type="date" id="governmentCollectionDate" value={governmentCollectionDate} max={todayFormattedForInput()} onChange={(e) => setGovernmentCollectionDate(e.target.value)}
-                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required
-                />
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" required />
               </div>
               <div>
-                <label htmlFor="notesForClosedCycle" className="block text-sm font-medium text-gray-700 mb-1">Notes for Cycle Being Closed (Optional)</label>
+                <label htmlFor="notesForClosedCycle" className="block text-sm font-medium text-gray-700 mb-1">Notes for Closed Cycle (Optional)</label>
                 <textarea id="notesForClosedCycle" rows="2" value={notesForClosedCycle} onChange={(e) => setNotesForClosedCycle(e.target.value)}
-                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                ></textarea>
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" ></textarea>
               </div>
               <div>
-                <label htmlFor="notesForNewCycle" className="block text-sm font-medium text-gray-700 mb-1">Notes for New Cycle Starting (Optional)</label>
+                <label htmlFor="notesForNewCycle" className="block text-sm font-medium text-gray-700 mb-1">Notes for New Cycle (Optional)</label>
                 <textarea id="notesForNewCycle" rows="2" value={notesForNewCycle} onChange={(e) => setNotesForNewCycle(e.target.value)}
-                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                ></textarea>
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" ></textarea>
               </div>
               <div className="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-3">
-                <button type="button" onClick={() => setShowCloseCycleForm(false)}
-                  className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
-                >Cancel</button>
-                <button type="submit" disabled={isClosingCycle}
-                  className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors duration-200"
-                > {isClosingCycle ? 'Processing...' : 'Confirm & Close Cycle'} </button>
+                <button type="button" onClick={() => setShowCloseCycleForm(false)} className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={isClosingCycle} className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"> {isClosingCycle ? 'Processing...' : 'Confirm & Close'} </button>
               </div>
             </form>
           </div>
@@ -237,19 +254,25 @@ function DashboardPage() {
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-700">Meter Details</h2>
             {Array.isArray(dashboardData.meterSummaries) && dashboardData.meterSummaries.length > 0 ? (
               dashboardData.meterSummaries.map((meter) => {
-                // --- FIX: Use dynamic consumptionTarget from backend ---
-                const target = meter.consumptionTarget || 500; // Fallback just in case
+                const target = meter.consumptionTarget || 500;
                 const rawPercentage = (meter.currentCycleConsumption / target) * 100;
                 const displayPercentage = Math.min(rawPercentage, 100).toFixed(0);
-                
-                // Show 0 if exceeded, calculated in backend anyway but safe to do here
                 const remainingUnits = meter.unitsRemainingToTarget; 
                 
                 return (
                   <div key={meter.meterId} 
-                       className={`bg-white shadow-lg rounded-lg p-6 border-l-8 transition-all duration-300 hover:shadow-xl ${meter.isCurrentlyActiveGeneral ? 'border-green-500' : 'border-slate-300'}`}>
+                       className={`bg-white shadow-lg rounded-lg p-6 border-l-8 transition-all duration-300 hover:shadow-xl relative ${meter.isCurrentlyActiveGeneral ? 'border-green-500' : 'border-slate-300'}`}>
                     
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4">
+                    {/* --- NEW: Quick Add Button --- */}
+                    <button 
+                        onClick={() => openQuickAdd(meter)}
+                        className="absolute top-4 right-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-2 rounded-full shadow-sm transition-colors"
+                        title="Quick Add Reading"
+                    >
+                        <PlusIcon />
+                    </button>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4 pr-12">
                       <div>
                           <h3 className="text-xl font-bold text-indigo-700">{meter.meterName}</h3>
                           <p className="text-sm text-gray-500">{meter.meterType}</p>
@@ -262,14 +285,20 @@ function DashboardPage() {
                       <div className="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0">
                           <p className="text-sm text-slate-500">Current Consumption</p>
                           <p className="text-2xl font-bold text-slate-800">{meter.currentCycleConsumption} <span className="text-lg text-slate-400">units</span></p>
-                          <p className="text-lg font-semibold text-green-600">{formatCurrency(meter.currentCycleCost)}</p>
+                          
+                          {/* --- NEW: Tier Badge & Cost --- */}
+                          <div className="flex items-center sm:justify-end gap-2 mt-1">
+                              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                                {meter.currentTier?.rate ? `₹${meter.currentTier.rate}/unit` : 'Base'}
+                              </span>
+                              <p className="text-lg font-semibold text-green-600">{formatCurrency(meter.currentCycleCost)}</p>
+                          </div>
                       </div>
                     </div>
 
-                    {/* Progress Bar (Always visible now) */}
+                    {/* Progress Bar */}
                     <div className="my-4">
                       <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
-                          {/* Use dynamic target in label */}
                           <span>Progress to {target} Unit Limit</span>
                           <span>{displayPercentage}%</span>
                       </div>
@@ -281,19 +310,31 @@ function DashboardPage() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t mt-4">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t mt-4 items-center">
                         <div>
                             <p className="text-xs text-slate-500">Average Daily Use</p>
                             <p className="text-md font-semibold text-slate-700">{meter.averageDailyConsumption} units</p>
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500">Previous Cycle Use</p>
-                            <p className="text-md font-semibold text-slate-700">{meter.previousCycleConsumption} units</p>
-                        </div>
-                        <div>
-                            {/* Use dynamic target in label */}
                             <p className="text-xs text-slate-500">Units to {target} Limit</p>
                             <p className="text-md font-semibold text-slate-700">{remainingUnits} units</p>
+                        </div>
+                        
+                        {/* --- NEW: Sparkline Chart --- */}
+                        <div className="col-span-2 h-16 w-full">
+                            <p className="text-xs text-slate-500 mb-1">7-Day Trend</p>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={meter.sparklineData}>
+                                    <defs>
+                                        <linearGradient id={`gradient-${meter.meterId}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill={`url(#gradient-${meter.meterId})`} />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
                   </div>

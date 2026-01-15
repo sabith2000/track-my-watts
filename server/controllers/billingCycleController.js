@@ -1,9 +1,10 @@
-// meter-tracker/server/controllers/billingCycleController.js
+// server/controllers/billingCycleController.js
 const BillingCycle = require('../models/BillingCycle');
 const Reading = require('../models/Reading');
 const SlabRateConfig = require('../models/SlabRateConfig');
+const Meter = require('../models/Meter'); // Import Meter model to get names
 
-// Helper to calculate cost (Same logic as Analytics to ensure matching numbers)
+// Helper to calculate cost
 function calculateCostForConsumption(consumedUnits, slabConfig) {
     if (!slabConfig || consumedUnits <= 0) { return 0; }
     let totalCost = 0;
@@ -27,7 +28,6 @@ function calculateCostForConsumption(consumedUnits, slabConfig) {
 }
 
 // @desc    Start a new billing cycle
-// @route   POST /api/billing-cycles/start
 exports.startNewBillingCycle = async (req, res) => {
   try {
     const { startDate, notes } = req.body;
@@ -50,7 +50,6 @@ exports.startNewBillingCycle = async (req, res) => {
 };
 
 // @desc    Close the current active billing cycle
-// @route   POST /api/billing-cycles/close-current
 exports.closeCurrentBillingCycle = async (req, res) => {
   try {
     const { governmentCollectionDate, notesForClosedCycle, notesForNewCycle } = req.body;
@@ -85,7 +84,6 @@ exports.closeCurrentBillingCycle = async (req, res) => {
 };
 
 // @desc    Get the current active billing cycle
-// @route   GET /api/billing-cycles/active
 exports.getActiveBillingCycle = async (req, res) => {
   try {
     const activeCycle = await BillingCycle.findOne({ status: 'active' });
@@ -97,22 +95,22 @@ exports.getActiveBillingCycle = async (req, res) => {
   }
 };
 
-// @desc    Get all billing cycles WITH calculated totals
-// @route   GET /api/billing-cycles
+// @desc    Get all billing cycles WITH detailed meter breakdown
 exports.getAllBillingCycles = async (req, res) => {
   try {
     // 1. Fetch raw cycles
     const cycles = await BillingCycle.find().sort({ startDate: -1 }).lean();
     
-    // 2. Fetch active rates for calculation
+    // 2. Fetch active rates & Meter Names
     const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
+    const meters = await Meter.find().lean();
+    const meterMap = meters.reduce((acc, m) => { acc[m._id] = m; return acc; }, {});
 
-    // 3. Enhance each cycle with calculations
+    // 3. Enhance each cycle
     const enrichedCycles = await Promise.all(cycles.map(async (cycle) => {
-        // Get all readings for this cycle
         const readings = await Reading.find({ billingCycle: cycle._id });
 
-        // Group consumption by meter (to apply "Sum of Individual Bills" logic)
+        // Group consumption by meter
         const meterConsumptionMap = {};
         readings.forEach(r => {
             const mId = r.meter.toString();
@@ -121,18 +119,29 @@ exports.getAllBillingCycles = async (req, res) => {
 
         let totalUnits = 0;
         let totalCost = 0;
+        const meterDetails = []; // --- NEW: To hold detailed breakdown ---
 
-        // Calculate cost for each meter individually and sum them up
-        Object.values(meterConsumptionMap).forEach(units => {
+        // Calculate per meter
+        Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
             totalUnits += units;
             const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
             totalCost += cost;
+
+            // Push detail
+            const meterInfo = meterMap[mId] || { name: 'Unknown Meter', meterType: 'N/A' };
+            meterDetails.push({
+                meterName: meterInfo.name,
+                meterType: meterInfo.meterType,
+                units: parseFloat(units.toFixed(2)),
+                cost: parseFloat(cost.toFixed(2))
+            });
         });
 
         return {
             ...cycle,
             totalUnits: parseFloat(totalUnits.toFixed(2)),
-            totalCost: parseFloat(totalCost.toFixed(2))
+            totalCost: parseFloat(totalCost.toFixed(2)),
+            meterDetails // --- NEW: Sending this array to frontend ---
         };
     }));
 
@@ -144,7 +153,6 @@ exports.getAllBillingCycles = async (req, res) => {
 };
 
 // @desc    Get a single billing cycle by ID
-// @route   GET /api/billing-cycles/:id
 exports.getBillingCycleById = async (req, res) => {
     try {
         const cycle = await BillingCycle.findById(req.params.id);
@@ -156,13 +164,10 @@ exports.getBillingCycleById = async (req, res) => {
 };
 
 // @desc    Update a billing cycle
-// @route   PUT /api/billing-cycles/:id
 exports.updateBillingCycle = async (req, res) => {
     try {
         const cycle = await BillingCycle.findById(req.params.id);
         if (!cycle) return res.status(404).json({ message: 'Not found.' });
-        
-        // Simple update logic for now
         Object.assign(cycle, req.body);
         await cycle.save();
         res.status(200).json(cycle);
@@ -172,7 +177,6 @@ exports.updateBillingCycle = async (req, res) => {
 };
 
 // @desc    Delete a billing cycle
-// @route   DELETE /api/billing-cycles/:id
 exports.deleteBillingCycle = async (req, res) => {
   try {
     const cycleId = req.params.id;

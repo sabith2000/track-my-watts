@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
-import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts'; // For Sparklines
-import AddReadingForm from '../components/AddReadingForm'; // Reuse existing component
+import AddReadingForm from '../components/AddReadingForm'; 
+import MeterCard from '../components/MeterCard'; // --- NEW IMPORT ---
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -32,7 +32,6 @@ const todayFormattedForInput = () => {
 const BillIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 015.25 4.5h-.75m-1.5 0v.75A.75.75 0 013 6h-.75m0 0h.75A.75.75 0 013.75 6v.75m0 0v-.75A.75.75 0 013.75 4.5h.75m9 13.5h3.375c.621 0 1.125-.504 1.125-1.125V9.11c0-.621-.504-1.125-1.125-1.125H9.75M12 15.75V9.113m0 0a3.001 3.001 0 00-3 0m3 0a3.001 3.001 0 01-3 0m0 0A3.001 3.001 0 009 9.113m0 0a3.001 3.001 0 013 0m0 0V3m6.12 3.03l.001.001M12 18.75M12 6.75h.008v.008H12V6.75z" /></svg>);
 const ZapIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>);
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" /></svg>);
-const PlusIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>);
 
 function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -46,7 +45,7 @@ function DashboardPage() {
   const [notesForNewCycle, setNotesForNewCycle] = useState('');
   const [isClosingCycle, setIsClosingCycle] = useState(false);
 
-  // --- NEW: Add Reading Modal State ---
+  // Add Reading Modal State
   const [showAddReadingModal, setShowAddReadingModal] = useState(false);
   const [selectedMeterForQuickAdd, setSelectedMeterForQuickAdd] = useState(null);
 
@@ -249,97 +248,17 @@ function DashboardPage() {
 
       {dashboardData && (
         <>
-          {/* Meter Details Section */}
+          {/* Meter Details Section (Cleaned up) */}
           <div className="space-y-6">
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-700">Meter Details</h2>
             {Array.isArray(dashboardData.meterSummaries) && dashboardData.meterSummaries.length > 0 ? (
-              dashboardData.meterSummaries.map((meter) => {
-                const target = meter.consumptionTarget || 500;
-                const rawPercentage = (meter.currentCycleConsumption / target) * 100;
-                const displayPercentage = Math.min(rawPercentage, 100).toFixed(0);
-                const remainingUnits = meter.unitsRemainingToTarget; 
-                
-                return (
-                  <div key={meter.meterId} 
-                       className={`bg-white shadow-lg rounded-lg p-6 border-l-8 transition-all duration-300 hover:shadow-xl relative ${meter.isCurrentlyActiveGeneral ? 'border-green-500' : 'border-slate-300'}`}>
-                    
-                    {/* --- NEW: Quick Add Button --- */}
-                    <button 
-                        onClick={() => openQuickAdd(meter)}
-                        className="absolute top-4 right-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-2 rounded-full shadow-sm transition-colors"
-                        title="Quick Add Reading"
-                    >
-                        <PlusIcon />
-                    </button>
-
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4 pr-12">
-                      <div>
-                          <h3 className="text-xl font-bold text-indigo-700">{meter.meterName}</h3>
-                          <p className="text-sm text-gray-500">{meter.meterType}</p>
-                          {meter.isGeneralPurpose && (
-                              <span className={`mt-1 text-xs font-semibold py-1 px-3 rounded-full ${meter.isCurrentlyActiveGeneral ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                              {meter.isCurrentlyActiveGeneral ? 'ACTIVE' : 'INACTIVE'}
-                              </span>
-                          )}
-                      </div>
-                      <div className="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0">
-                          <p className="text-sm text-slate-500">Current Consumption</p>
-                          <p className="text-2xl font-bold text-slate-800">{meter.currentCycleConsumption} <span className="text-lg text-slate-400">units</span></p>
-                          
-                          {/* --- NEW: Tier Badge & Cost --- */}
-                          <div className="flex items-center sm:justify-end gap-2 mt-1">
-                              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
-                                {meter.currentTier?.rate ? `₹${meter.currentTier.rate}/unit` : 'Base'}
-                              </span>
-                              <p className="text-lg font-semibold text-green-600">{formatCurrency(meter.currentCycleCost)}</p>
-                          </div>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="my-4">
-                      <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
-                          <span>Progress to {target} Unit Limit</span>
-                          <span>{displayPercentage}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-4">
-                          <div className="bg-gradient-to-r from-blue-500 to-sky-400 h-4 rounded-full flex items-center justify-center text-white text-xs font-mono" 
-                               style={{ width: `${displayPercentage}%` }}>
-                               {rawPercentage > 15 ? `${meter.currentCycleConsumption} units` : ''}
-                          </div>
-                      </div>
-                    </div>
-                    
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t mt-4 items-center">
-                        <div>
-                            <p className="text-xs text-slate-500">Average Daily Use</p>
-                            <p className="text-md font-semibold text-slate-700">{meter.averageDailyConsumption} units</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-500">Units to {target} Limit</p>
-                            <p className="text-md font-semibold text-slate-700">{remainingUnits} units</p>
-                        </div>
-                        
-                        {/* --- NEW: Sparkline Chart --- */}
-                        <div className="col-span-2 h-16 w-full">
-                            <p className="text-xs text-slate-500 mb-1">7-Day Trend</p>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={meter.sparklineData}>
-                                    <defs>
-                                        <linearGradient id={`gradient-${meter.meterId}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill={`url(#gradient-${meter.meterId})`} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                  </div>
-                );
-              })
+              dashboardData.meterSummaries.map((meter) => (
+                <MeterCard 
+                    key={meter.meterId} 
+                    meter={meter} 
+                    onQuickAdd={openQuickAdd} 
+                />
+              ))
             ) : (<p className="text-sm text-gray-600">No meter data available for summary.</p>)}
           </div>
           

@@ -4,6 +4,7 @@ import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportHelper';
 
+// --- HELPER FUNCTIONS ---
 const todayFormattedForInput = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -53,9 +54,12 @@ function BillingCyclesPage() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  
   // Row Expansion State
   const [expandedCycleId, setExpandedCycleId] = useState(null);
+  
+  // NEW: Export Loading State
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // New Cycle Form State
   const [showStartForm, setShowStartForm] = useState(false);
@@ -239,29 +243,29 @@ function BillingCyclesPage() {
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                                             <h4 className="text-sm font-bold text-gray-800 border-b-2 border-indigo-500 pb-1">Detailed Breakdown</h4>
                                             
-                                            {/* Professional Icons Buttons */}
                                             <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                                                {/* PDF Button */}
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); exportToPDF(cycle); }} 
-                                                    className="flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded shadow hover:bg-indigo-700 transition-all active:scale-95"
-                                                    title="Generate PDF Receipt"
+                                                    onClick={(e) => { e.stopPropagation(); exportToPDF(cycle._id, setIsGenerating); }} 
+                                                    disabled={isGenerating}
+                                                    className={`flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded shadow hover:bg-indigo-700 transition-all active:scale-95 ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
                                                 >
-                                                    <PdfIcon /> Download Statement
+                                                    <PdfIcon /> {isGenerating ? 'Generating...' : 'Download Statement'}
                                                 </button>
                                                 
+                                                {/* Excel Button */}
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); exportToExcel(cycle); }} 
-                                                    className="flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded shadow hover:bg-emerald-700 transition-all active:scale-95"
-                                                    title="Export data to Excel"
+                                                    onClick={(e) => { e.stopPropagation(); exportToExcel(cycle._id, setIsGenerating); }} 
+                                                    disabled={isGenerating}
+                                                    className={`flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded shadow hover:bg-emerald-700 transition-all active:scale-95 ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
                                                 >
-                                                    <ExcelIcon /> Export Worksheet
+                                                    <ExcelIcon /> {isGenerating ? 'Generating...' : 'Export Worksheet'}
                                                 </button>
                                                 
                                                 {cycle.status !== 'active' && (
                                                     <button 
                                                         onClick={(e) => openDeleteConfirm(e, cycle)} 
                                                         className="flex items-center px-4 py-2 bg-white border border-red-200 text-red-600 text-xs font-semibold rounded shadow-sm hover:bg-red-50 transition-all ml-auto sm:ml-2"
-                                                        title="Permanently remove this cycle"
                                                     >
                                                         <TrashIcon /> Delete Cycle
                                                     </button>

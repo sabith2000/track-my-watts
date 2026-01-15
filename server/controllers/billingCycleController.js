@@ -194,3 +194,98 @@ exports.deleteBillingCycle = async (req, res) => {
     res.status(500).json({ message: 'Server error.' });
   }
 };
+
+// ... (Keep existing code above) ...
+
+// @desc    Get COMPLETE data for Export (Summary + Raw Readings + Stats)
+// @route   GET /api/billing-cycles/:id/export-data
+exports.getExportDataForCycle = async (req, res) => {
+    try {
+        const cycleId = req.params.id;
+        
+        // 1. Fetch Cycle & Config
+        const cycle = await BillingCycle.findById(cycleId).lean();
+        if (!cycle) return res.status(404).json({ message: 'Cycle not found' });
+        
+        const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
+        
+        // 2. Fetch All Readings for this Cycle
+        // Populate meter details so we have names in the raw data
+        const readings = await Reading.find({ billingCycle: cycleId })
+                                      .populate('meter', 'name meterType')
+                                      .sort({ date: 1 })
+                                      .lean();
+
+        // 3. Calculate Summary (Same logic as getAllBillingCycles to ensure match)
+        const meterConsumptionMap = {};
+        readings.forEach(r => {
+            const mId = r.meter._id.toString();
+            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + r.unitsConsumedSincePrevious;
+        });
+
+        let totalUnits = 0;
+        let totalCost = 0;
+        const meterDetails = [];
+
+        Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
+            totalUnits += units;
+            const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
+            totalCost += cost;
+
+            // Find meter name from the readings array (since we populated it)
+            const readingWithMeter = readings.find(r => r.meter._id.toString() === mId);
+            const meterName = readingWithMeter ? readingWithMeter.meter.name : 'Unknown';
+            const meterType = readingWithMeter ? readingWithMeter.meter.meterType : 'N/A';
+
+            meterDetails.push({ meterName, meterType, units, cost });
+        });
+
+        // 4. Calculate Basic Analytics (Sheet 3 Data)
+        // Group by Date to find Peak Usage
+        const dailyUsage = {};
+        readings.forEach(r => {
+            const dateStr = new Date(r.date).toISOString().split('T')[0];
+            dailyUsage[dateStr] = (dailyUsage[dateStr] || 0) + r.unitsConsumedSincePrevious;
+        });
+        
+        // Find Peak Day
+        let peakDay = '-';
+        let peakUsage = 0;
+        Object.entries(dailyUsage).forEach(([date, usage]) => {
+            if (usage > peakUsage) {
+                peakUsage = usage;
+                peakDay = date;
+            }
+        });
+        
+        // Calculate Daily Average
+        const daysInCycle = cycle.endDate 
+            ? Math.ceil((new Date(cycle.endDate) - new Date(cycle.startDate)) / (1000 * 60 * 60 * 24)) 
+            : Math.ceil((new Date() - new Date(cycle.startDate)) / (1000 * 60 * 60 * 24)) || 1;
+            
+        const analytics = {
+            averageDailyConsumption: (totalUnits / daysInCycle).toFixed(2),
+            peakUsageDay: peakDay,
+            peakUsageAmount: peakUsage.toFixed(2),
+            totalReadingsCount: readings.length,
+            daysInCycle
+        };
+
+        // 5. Send The Package
+        res.status(200).json({
+            cycle: { ...cycle, totalUnits, totalCost, meterDetails },
+            readings: readings.map(r => ({
+                date: r.date,
+                meterName: r.meter.name,
+                meterType: r.meter.meterType,
+                readingValue: r.currentReading,
+                unitsConsumed: r.unitsConsumedSincePrevious
+            })),
+            analytics
+        });
+
+    } catch (error) {
+        console.error("Export Error:", error);
+        res.status(500).json({ message: 'Server error during export generation.' });
+    }
+};

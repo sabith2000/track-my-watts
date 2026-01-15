@@ -1,4 +1,4 @@
-// meter-tracker/server/routes/billingCycleRoutes.js
+// server/routes/billingCycleRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -8,7 +8,8 @@ const {
   getAllBillingCycles,
   getBillingCycleById,
   updateBillingCycle,
-  deleteBillingCycle // Import the new function
+  deleteBillingCycle,
+  getExportDataForCycle // <--- IMPORT THIS
 } = require('../controllers/billingCycleController');
 
 router.route('/')
@@ -23,9 +24,13 @@ router.route('/close-current')
 router.route('/active')
   .get(getActiveBillingCycle);
 
+// --- NEW EXPORT ROUTE ---
+router.route('/:id/export-data')
+  .get(getExportDataForCycle);
+
 router.route('/:id')
   .get(getBillingCycleById)
   .put(updateBillingCycle)
-  .delete(deleteBillingCycle); // Add this line
+  .delete(deleteBillingCycle);
 
 module.exports = router;

@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import apiClient from '../services/api'; // Import API to fetch data
+import apiClient from '../services/api';
 
 // --- HELPER: FORMATTING ---
 const formatDate = (dateString) => {
@@ -19,18 +19,19 @@ const formatCurrency = (amount) => {
 
 // --- HELPER: FILE NAMING ---
 const generateFileName = (prefix, cycle, extension) => {
-    const start = new Date(cycle.startDate).toISOString().split('T')[0]; // YYYY-MM-DD
-    const end = cycle.endDate 
-        ? new Date(cycle.endDate).toISOString().split('T')[0] 
-        : 'Active';
-    return `TrackMyWatts_${prefix}_${start}_to_${end}.${extension}`;
+    // Dates for readability
+    const start = new Date(cycle.startDate).toISOString().split('T')[0];
+    
+    // Timestamp for uniqueness (HHMMSS)
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, ''); 
+
+    return `TrackMyWatts_${prefix}_${start}_${timeStr}.${extension}`;
 };
 
-// --- MAIN EXCEL FUNCTION (Async) ---
-export const exportToExcel = async (cycleId, setLoadingState) => {
+// --- MAIN EXCEL FUNCTION ---
+export const exportToExcel = async (cycleId) => {
     try {
-        if (setLoadingState) setLoadingState(true);
-
         // 1. FETCH FULL DATA
         const response = await apiClient.get(`/billing-cycles/${cycleId}/export-data`);
         const { cycle, readings, analytics } = response.data;
@@ -57,7 +58,7 @@ export const exportToExcel = async (cycleId, setLoadingState) => {
                 summaryData.push({ A: m.meterName, B: m.meterType, C: m.units, D: m.cost });
             });
         }
-        // Analytics in Summary
+        
         summaryData.push({ A: "", B: "" });
         summaryData.push({ A: "ANALYTICS SNAPSHOT", B: "" });
         summaryData.push({ A: "Avg Daily Use:", B: `${analytics.averageDailyConsumption} units/day` });
@@ -84,7 +85,7 @@ export const exportToExcel = async (cycleId, setLoadingState) => {
         wsReadings['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 10 }];
         XLSX.utils.book_append_sheet(wb, wsReadings, "Raw Readings");
 
-        // --- SHEET 3: ANALYTICS (Data Table) ---
+        // --- SHEET 3: ANALYTICS ---
         const analyticsData = [
             ["Metric", "Value"],
             ["Days in Cycle", analytics.daysInCycle],
@@ -100,23 +101,20 @@ export const exportToExcel = async (cycleId, setLoadingState) => {
         // DOWNLOAD
         const fileName = generateFileName('Report', cycle, 'xlsx');
         XLSX.writeFile(wb, fileName);
+        return true;
 
     } catch (error) {
         console.error("Excel Export Error:", error);
-        alert("Failed to generate Excel report. Please try again.");
-    } finally {
-        if (setLoadingState) setLoadingState(false);
+        throw error;
     }
 };
 
-// --- MAIN PDF FUNCTION (Async) ---
-export const exportToPDF = async (cycleId, setLoadingState) => {
+// --- MAIN PDF FUNCTION ---
+export const exportToPDF = async (cycleId) => {
     try {
-        if (setLoadingState) setLoadingState(true);
-
         // 1. FETCH FULL DATA
         const response = await apiClient.get(`/billing-cycles/${cycleId}/export-data`);
-        const { cycle } = response.data; // PDF mainly needs Summary + Meter Details
+        const { cycle } = response.data;
 
         const doc = new jsPDF();
 
@@ -157,7 +155,7 @@ export const exportToPDF = async (cycleId, setLoadingState) => {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(79, 70, 229);
         doc.text(formatCurrency(cycle.totalCost), 125, 70);
-        doc.setTextColor(0); // Reset
+        doc.setTextColor(0);
 
         // METER TABLE
         const tableRows = cycle.meterDetails.map(m => [
@@ -204,11 +202,10 @@ export const exportToPDF = async (cycleId, setLoadingState) => {
         // DOWNLOAD
         const fileName = generateFileName('Bill', cycle, 'pdf');
         doc.save(fileName);
+        return true;
 
     } catch (error) {
         console.error("PDF Export Error:", error);
-        alert("Failed to generate PDF. Please try again.");
-    } finally {
-        if (setLoadingState) setLoadingState(false);
+        throw error;
     }
 };

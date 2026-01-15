@@ -4,7 +4,6 @@ import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportHelper';
 
-// --- HELPER FUNCTIONS ---
 const todayFormattedForInput = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -50,24 +49,27 @@ const TrashIcon = () => (
     </svg>
 );
 
+const LoaderIcon = () => (
+    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
 function BillingCyclesPage() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Row Expansion State
   const [expandedCycleId, setExpandedCycleId] = useState(null);
   
-  // NEW: Export Loading State
-  const [isGenerating, setIsGenerating] = useState(false);
+  // FIX: Track WHICH button is loading. Format: "cycleId-type" (e.g., "123-pdf")
+  const [loadingToken, setLoadingToken] = useState(null);
 
-  // New Cycle Form State
   const [showStartForm, setShowStartForm] = useState(false);
   const [newStartDate, setNewStartDate] = useState(todayFormattedForInput());
   const [newNotes, setNewNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Delete State
   const [cycleToDelete, setCycleToDelete] = useState(null);
 
   const hasActiveCycle = billingCycles.some(cycle => cycle.status === 'active');
@@ -94,7 +96,28 @@ function BillingCyclesPage() {
       setExpandedCycleId(expandedCycleId === id ? null : id);
   };
 
-  // --- Handlers ---
+  // --- Export Handler Wrapper ---
+  const handleExport = async (e, cycleId, type) => {
+      e.stopPropagation();
+      const token = `${cycleId}-${type}`;
+      setLoadingToken(token); // Set specific token
+
+      try {
+          if (type === 'pdf') {
+              // toast.info("Preparing PDF Statement...");
+              await exportToPDF(cycleId);
+          } else {
+              // toast.info("Preparing Excel Workbook...");
+              await exportToExcel(cycleId);
+          }
+      } catch (err) {
+          toast.error("Failed to generate report.");
+      } finally {
+          setLoadingToken(null); // Clear specific token
+      }
+  };
+
+  // --- Other Handlers ---
   const handleStartNewCycle = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -246,20 +269,22 @@ function BillingCyclesPage() {
                                             <div className="flex flex-wrap gap-3 w-full sm:w-auto">
                                                 {/* PDF Button */}
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); exportToPDF(cycle._id, setIsGenerating); }} 
-                                                    disabled={isGenerating}
-                                                    className={`flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded shadow hover:bg-indigo-700 transition-all active:scale-95 ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+                                                    onClick={(e) => handleExport(e, cycle._id, 'pdf')} 
+                                                    disabled={loadingToken !== null}
+                                                    className={`flex items-center px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded shadow hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait ${loadingToken === `${cycle._id}-pdf` ? 'animate-pulse' : ''}`}
                                                 >
-                                                    <PdfIcon /> {isGenerating ? 'Generating...' : 'Download Statement'}
+                                                    {loadingToken === `${cycle._id}-pdf` ? <LoaderIcon /> : <PdfIcon />}
+                                                    {loadingToken === `${cycle._id}-pdf` ? 'Generating...' : 'Download Statement'}
                                                 </button>
                                                 
                                                 {/* Excel Button */}
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); exportToExcel(cycle._id, setIsGenerating); }} 
-                                                    disabled={isGenerating}
-                                                    className={`flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded shadow hover:bg-emerald-700 transition-all active:scale-95 ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+                                                    onClick={(e) => handleExport(e, cycle._id, 'excel')} 
+                                                    disabled={loadingToken !== null}
+                                                    className={`flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded shadow hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait ${loadingToken === `${cycle._id}-excel` ? 'animate-pulse' : ''}`}
                                                 >
-                                                    <ExcelIcon /> {isGenerating ? 'Generating...' : 'Export Worksheet'}
+                                                     {loadingToken === `${cycle._id}-excel` ? <LoaderIcon /> : <ExcelIcon />}
+                                                     {loadingToken === `${cycle._id}-excel` ? 'Generating...' : 'Export Worksheet'}
                                                 </button>
                                                 
                                                 {cycle.status !== 'active' && (

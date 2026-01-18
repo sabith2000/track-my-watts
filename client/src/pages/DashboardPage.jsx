@@ -3,9 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import AddReadingForm from '../components/AddReadingForm'; 
-import MeterCard from '../components/MeterCard'; // --- NEW IMPORT ---
+import MeterCard from '../components/MeterCard';
+import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
-// Helper functions
+// ... (Keep existing Helper functions: formatDate, formatCurrency, todayFormattedForInput) ...
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
@@ -28,7 +29,7 @@ const todayFormattedForInput = () => {
   return `${year}-${month}-${day}`;
 };
 
-// Icons
+// ... (Keep existing Icons: BillIcon, ZapIcon, CalendarIcon, PlusIcon if used) ...
 const BillIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 015.25 4.5h-.75m-1.5 0v.75A.75.75 0 013 6h-.75m0 0h.75A.75.75 0 013.75 6v.75m0 0v-.75A.75.75 0 013.75 4.5h.75m9 13.5h3.375c.621 0 1.125-.504 1.125-1.125V9.11c0-.621-.504-1.125-1.125-1.125H9.75M12 15.75V9.113m0 0a3.001 3.001 0 00-3 0m3 0a3.001 3.001 0 01-3 0m0 0A3.001 3.001 0 009 9.113m0 0a3.001 3.001 0 013 0m0 0V3m6.12 3.03l.001.001M12 18.75M12 6.75h.008v.008H12V6.75z" /></svg>);
 const ZapIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>);
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" /></svg>);
@@ -128,7 +129,8 @@ function DashboardPage() {
   };
 
   if (loading && !dashboardData) {
-    return (<div className="p-6 text-center"><p className="text-lg text-gray-600">Loading dashboard data...</p></div>);
+    // --- UPDATED LOADING STATE ---
+    return <Loader text="Loading Dashboard..." />;
   }
   if (error && !dashboardData) {
     return (<div className="p-6 text-center"><p className="text-lg text-red-600">Initial Load Error: {error}</p></div>);

@@ -3,7 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportHelper';
+import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
+// ... (Keep existing helpers: formatDate, formatCurrency, Icons) ...
 const todayFormattedForInput = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -162,7 +164,7 @@ function BillingCyclesPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center"><p className="text-lg text-gray-600">Loading Billing Cycles...</p></div>;
+  if (loading) return <Loader text="Loading Billing Cycles..." />; // --- UPDATED LOADING ---
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

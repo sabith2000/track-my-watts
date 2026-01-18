@@ -1,13 +1,14 @@
-// meter-tracker/client/src/pages/ReadingsPage.jsx
+// client/src/pages/ReadingsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import AddReadingForm from '../components/AddReadingForm';
-import { toast } from 'react-toastify'; // Import toast
+import { toast } from 'react-toastify';
+import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
 function ReadingsPage() {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Keep specific error for initial load failure
+  const [error, setError] = useState(null); 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalReadings, setTotalReadings] = useState(0);
@@ -45,7 +46,6 @@ function ReadingsPage() {
 
       const response = await apiClient.get('/readings', { params });
       
-      // Robust check to prevent crashes
       setReadings(Array.isArray(response.data.readings) ? response.data.readings : []);
       
       setTotalPages(response.data.totalPages || 1);
@@ -243,7 +243,9 @@ function ReadingsPage() {
         </div>
       </div>
       
-      {loading ? ( <div className="p-6 text-center"><p className="text-lg text-gray-600">Loading readings...</p></div>
+      {loading ? ( 
+        // --- UPDATED LOADING ---
+        <Loader text="Fetching your data..." />
       ) : error ? ( <div className="p-6 text-center"><p className="text-lg text-red-600">Error: {error}</p></div>
       ) : (
         <>

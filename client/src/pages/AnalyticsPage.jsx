@@ -6,11 +6,11 @@ import {
 } from 'recharts';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
+import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
-// Professional color palette matching the design
+// ... (Keep COLORS and CustomBreakdownTooltip) ...
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
-// Custom Tooltip for the 100% Stacked Chart
 const CustomBreakdownTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -22,7 +22,6 @@ const CustomBreakdownTooltip = ({ active, payload, label }) => {
             <span className="text-slate-600">{entry.name}:</span>
             <span className="font-semibold">
               {entry.value.toFixed(0)} units 
-              {/* Calculate percentage relative to this specific stack's total */}
               <span className="text-slate-400 ml-1 text-xs">
                 ({(entry.value / payload.reduce((acc, p) => acc + p.value, 0) * 100).toFixed(0)}%)
               </span>
@@ -112,7 +111,8 @@ function AnalyticsPage() {
   const formatCurrencyAxis = (value) => `₹${value}`;
 
   if (loading) {
-    return <div className="p-6 text-center"><p className="text-lg text-gray-600">Loading Analytics...</p></div>;
+    // --- UPDATED LOADING ---
+    return <Loader text="Crunching the numbers..." />;
   }
 
   if (error) {

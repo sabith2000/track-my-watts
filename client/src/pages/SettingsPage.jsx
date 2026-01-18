@@ -3,12 +3,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import SlabRateManager from '../components/SlabRateManager';
+import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
 function SettingsPage() {
   const [meters, setMeters] = useState([]);
   const [generalPurposeMeters, setGeneralPurposeMeters] = useState([]);
   const [selectedActiveMeterId, setSelectedActiveMeterId] = useState('');
   
+  // Loading State
+  const [loading, setLoading] = useState(true);
+
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUpdatingMeter, setIsUpdatingMeter] = useState(false);
 
@@ -30,39 +34,45 @@ function SettingsPage() {
   const [isUpdatingSlab, setIsUpdatingSlab] = useState(false);
 
   // --- Data Fetching ---
-  const fetchMeters = useCallback(async () => {
+  const loadAllData = useCallback(async () => {
     try {
-      const response = await apiClient.get('/meters');
-      const allMeters = response.data || [];
+      setLoading(true);
+      
+      // Fetch Meters
+      const metersRes = await apiClient.get('/meters');
+      const allMeters = metersRes.data || [];
       setMeters(allMeters);
       const gpMeters = Array.isArray(allMeters) ? allMeters.filter(meter => meter.isGeneralPurpose) : [];
       setGeneralPurposeMeters(gpMeters);
       const currentActive = gpMeters.find(meter => meter.isCurrentlyActiveGeneral);
       if (currentActive) setSelectedActiveMeterId(currentActive._id);
-    } catch (err) { toast.error('Failed to fetch meters.'); }
-  }, []);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/settings');
-      if (response.data && response.data.consumptionTarget) {
-        setConsumptionTarget(response.data.consumptionTarget);
-        setConsumptionTargetInput(String(response.data.consumptionTarget));
-      }
-    } catch (err) { console.log("Settings endpoint not reachable yet"); }
-  }, []);
-
-  const fetchSlabConfigs = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/slabs');
-      const allSlabs = response.data || [];
+      // Fetch Slabs
+      const slabsRes = await apiClient.get('/slabs');
+      const allSlabs = slabsRes.data || [];
       setSlabConfigs(Array.isArray(allSlabs) ? allSlabs : []);
-      const currentActive = allSlabs.find(sc => sc.isCurrentlyActive);
-      if (currentActive) setSelectedActiveSlabConfigId(currentActive._id);
-    } catch (err) { toast.error('Failed to fetch slab configs.'); }
+      const currentActiveSlab = allSlabs.find(sc => sc.isCurrentlyActive);
+      if (currentActiveSlab) setSelectedActiveSlabConfigId(currentActiveSlab._id);
+
+      // Fetch Settings
+      try {
+        const settingsRes = await apiClient.get('/settings');
+        if (settingsRes.data && settingsRes.data.consumptionTarget) {
+          setConsumptionTarget(settingsRes.data.consumptionTarget);
+          setConsumptionTargetInput(String(settingsRes.data.consumptionTarget));
+        }
+      } catch (e) { console.log("Settings endpoint silent fail"); }
+
+    } catch (err) {
+      toast.error('Failed to load settings data.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchMeters(); fetchSlabConfigs(); fetchSettings(); }, [fetchMeters, fetchSlabConfigs, fetchSettings]);
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   // --- Handlers: Meters ---
   const handleEditClick = (meter) => {
@@ -84,7 +94,9 @@ function SettingsPage() {
       await apiClient.put(`/meters/${meterId}`, { name: editingMeterName, description: editingMeterDescription });
       toast.success("Meter updated!");
       setEditingMeterId(null);
-      fetchMeters();
+      // Partial refresh
+      const response = await apiClient.get('/meters');
+      setMeters(response.data || []);
     } catch (err) { toast.error('Update failed.'); } 
     finally { setIsUpdating(false); }
   };
@@ -95,16 +107,18 @@ function SettingsPage() {
     try {
       await apiClient.put(`/meters/${selectedActiveMeterId}/set-active-general`);
       toast.success('Active meter updated!');
-      fetchMeters();
+      // Refresh meters to update UI tags
+      const response = await apiClient.get('/meters');
+      const allMeters = response.data || [];
+      setMeters(allMeters);
+      setGeneralPurposeMeters(allMeters.filter(m => m.isGeneralPurpose));
     } catch (err) { toast.error('Failed to update active meter.'); } 
     finally { setIsUpdatingMeter(false); }
   };
 
   // --- Handlers: Settings (Target) ---
-  
   const handleSaveSettingsClick = () => {
     const newTarget = parseInt(consumptionTargetInput, 10);
-    // Prevent opening modal if values are identical
     if (newTarget === consumptionTarget) return; 
 
     if (isNaN(newTarget) || newTarget <= 0) { 
@@ -130,12 +144,10 @@ function SettingsPage() {
   };
 
   const cancelSaveSettings = () => {
-      // Reset input to original value on Cancel
       setShowTargetConfirm(false);
       setConsumptionTargetInput(String(consumptionTarget));
   };
   
-  // --- NEW: Reset to Default Handler ---
   const handleResetToDefault = () => {
       setConsumptionTargetInput('500');
   };
@@ -147,13 +159,16 @@ function SettingsPage() {
     try {
       await apiClient.put(`/slabs/${selectedActiveSlabConfigId}/activate`);
       toast.success('Slab configuration activated!');
-      fetchSlabConfigs();
+      // Refresh slabs
+      const response = await apiClient.get('/slabs');
+      setSlabConfigs(response.data || []);
     } catch (err) { toast.error('Activation failed.'); }
     finally { setIsUpdatingSlab(false); }
   };
 
-  // Helper to check if button should be disabled
   const isTargetChanged = parseInt(consumptionTargetInput, 10) !== consumptionTarget;
+
+  if (loading) return <Loader text="Loading Settings..." />; // --- UPDATED LOADING ---
 
   return (
     <div className="p-4 sm:p-6 space-y-8">
@@ -179,7 +194,6 @@ function SettingsPage() {
                 {isUpdating ? 'Updating...' : 'Update Target'}
             </button>
 
-            {/* --- NEW: Reset Button (only shows if input is not 500) --- */}
             {consumptionTargetInput !== '500' && (
                 <button 
                     onClick={handleResetToDefault}
@@ -251,7 +265,7 @@ function SettingsPage() {
         selectedConfigId={selectedActiveSlabConfigId}
         onSelectConfig={setSelectedActiveSlabConfigId}
         onSaveActive={handleSaveActiveSlabConfig}
-        onRefresh={fetchSlabConfigs}
+        onRefresh={loadAllData} // Refreshes everything
         isUpdating={isUpdatingSlab}
       />
 

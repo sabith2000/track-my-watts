@@ -199,87 +199,108 @@ exports.deleteBillingCycle = async (req, res) => {
 
 // @desc    Get COMPLETE data for Export (Summary + Raw Readings + Stats)
 // @route   GET /api/billing-cycles/:id/export-data
+// server/controllers/billingCycleController.js (Partial Update)
+
+// server/controllers/billingCycleController.js (Update this function only)
+
+// server/controllers/billingCycleController.js (Update this function only)
+
 exports.getExportDataForCycle = async (req, res) => {
     try {
         const cycleId = req.params.id;
         
-        // 1. Fetch Cycle & Config
+        // 1. Fetch Cycle
         const cycle = await BillingCycle.findById(cycleId).lean();
         if (!cycle) return res.status(404).json({ message: 'Cycle not found' });
         
         const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
         
-        // 2. Fetch All Readings for this Cycle
-        // Populate meter details so we have names in the raw data
+        // 2. Fetch Readings (Sort strictly by date)
         const readings = await Reading.find({ billingCycle: cycleId })
                                       .populate('meter', 'name meterType')
                                       .sort({ date: 1 })
                                       .lean();
 
-        // 3. Calculate Summary (Same logic as getAllBillingCycles to ensure match)
+        // 3. Calculate Summary & Consumption
         const meterConsumptionMap = {};
-        readings.forEach(r => {
-            const mId = r.meter._id.toString();
-            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + r.unitsConsumedSincePrevious;
-        });
-
         let totalUnits = 0;
         let totalCost = 0;
-        const meterDetails = [];
 
+        // Group consumption by meter
+        readings.forEach(r => {
+            const mId = r.meter?._id?.toString() || 'unknown';
+            // SAFEGUARD: Ensure units is a number
+            const units = Number(r.unitsConsumedSincePrevious) || 0; 
+            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + units;
+        });
+
+        // Generate Meter Details Array
+        const meterDetails = [];
         Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
             totalUnits += units;
             const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
             totalCost += cost;
 
-            // Find meter name from the readings array (since we populated it)
-            const readingWithMeter = readings.find(r => r.meter._id.toString() === mId);
-            const meterName = readingWithMeter ? readingWithMeter.meter.name : 'Unknown';
-            const meterType = readingWithMeter ? readingWithMeter.meter.meterType : 'N/A';
+            // Find meter metadata
+            const readingWithMeter = readings.find(r => (r.meter?._id?.toString() || 'unknown') === mId);
+            const meterName = readingWithMeter?.meter?.name || 'Unknown Meter';
+            const meterType = readingWithMeter?.meter?.meterType || 'N/A';
 
-            meterDetails.push({ meterName, meterType, units, cost });
+            meterDetails.push({ 
+                meterName, 
+                meterType, 
+                units: parseFloat(units.toFixed(2)), 
+                cost: parseFloat(cost.toFixed(2)) 
+            });
         });
 
-        // 4. Calculate Basic Analytics (Sheet 3 Data)
-        // Group by Date to find Peak Usage
+        // 4. Calculate Analytics (Peak Usage)
         const dailyUsage = {};
         readings.forEach(r => {
-            const dateStr = new Date(r.date).toISOString().split('T')[0];
-            dailyUsage[dateStr] = (dailyUsage[dateStr] || 0) + r.unitsConsumedSincePrevious;
+            if (r.date) {
+                const dateStr = new Date(r.date).toISOString().split('T')[0];
+                const units = Number(r.unitsConsumedSincePrevious) || 0;
+                dailyUsage[dateStr] = (dailyUsage[dateStr] || 0) + units;
+            }
         });
-        
-        // Find Peak Day
-        let peakDay = '-';
+
+        let peakDay = cycle.startDate; // Default
         let peakUsage = 0;
+
         Object.entries(dailyUsage).forEach(([date, usage]) => {
             if (usage > peakUsage) {
                 peakUsage = usage;
                 peakDay = date;
             }
         });
-        
-        // Calculate Daily Average
+
         const daysInCycle = cycle.endDate 
             ? Math.ceil((new Date(cycle.endDate) - new Date(cycle.startDate)) / (1000 * 60 * 60 * 24)) 
             : Math.ceil((new Date() - new Date(cycle.startDate)) / (1000 * 60 * 60 * 24)) || 1;
             
         const analytics = {
-            averageDailyConsumption: (totalUnits / daysInCycle).toFixed(2),
+            averageDailyConsumption: (daysInCycle > 0 ? (totalUnits / daysInCycle) : 0).toFixed(2),
             peakUsageDay: peakDay,
             peakUsageAmount: peakUsage.toFixed(2),
             totalReadingsCount: readings.length,
             daysInCycle
         };
 
-        // 5. Send The Package
+        // 5. Send Package (FIXED MAPPING)
         res.status(200).json({
-            cycle: { ...cycle, totalUnits, totalCost, meterDetails },
+            cycle: { 
+                ...cycle, 
+                totalUnits: parseFloat(totalUnits.toFixed(2)), 
+                totalCost: parseFloat(totalCost.toFixed(2)), 
+                meterDetails 
+            },
             readings: readings.map(r => ({
                 date: r.date,
-                meterName: r.meter.name,
-                meterType: r.meter.meterType,
-                readingValue: r.currentReading,
-                unitsConsumed: r.unitsConsumedSincePrevious
+                meterName: r.meter?.name || 'Unknown',
+                meterType: r.meter?.meterType || 'N/A',
+                // --- FIX: Use correct field name from Schema ---
+                readingValue: r.readingValue, 
+                unitsConsumed: r.unitsConsumedSincePrevious || 0
             })),
             analytics
         });

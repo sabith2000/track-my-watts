@@ -1,12 +1,16 @@
 {
   "name": "meter-tracker",
-  "version": "1.4.0",
+  "version": "1.5.9",
   "description": "Full stack electricity meter tracking application",
   "main": "server/server.js",
   "scripts": {
     "build": "npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client",
-    "start": "npm start --prefix server"
+    "start": "npm start --prefix server",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\""
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }

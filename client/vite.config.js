@@ -1,7 +1,7 @@
 // meter-tracker/client/vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa'; // Import the PWA plugin
+import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -14,15 +14,15 @@ export default defineConfig({
     react(),
     // --- PWA CONFIGURATION ---
     VitePWA({
-      registerType: 'autoUpdate', // Automatically updates the app when you push new code
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'Track My Watts',
-        short_name: 'WattsTracker',
+        short_name: 'TrackMyWatts',
         description: 'Track your electricity consumption and manage billing cycles.',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
-        display: 'standalone', // Makes it look like a native app (no browser bar)
+        theme_color: '#32343f',
+        background_color: '#32343f',
+        display: 'standalone',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -35,14 +35,23 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
+      },
+      // --- FIX: Increase Cache Limit for Large Libraries (ExcelJS/PDF) ---
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // Limit increased to 4MB
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
-    // -------------------------
   ],
   
   // Define global constants
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
+  },
+
+  // --- FIX: Increase Warning Limit to suppress console noise ---
+  build: {
+    chunkSizeWarningLimit: 3000,
   },
 
   server: {

@@ -1,6 +1,6 @@
 {
   "name": "meter-tracker-server",
-  "version": "1.6.4",
+  "version": "1.6.11",
   "description": "backend for meter tracker",
   "main": "server.js",
   "scripts": {

@@ -42,9 +42,10 @@ function Layout() {
       {/* --- HEADER --- */}
       <nav className="bg-slate-900 text-white shadow-xl sticky top-0 z-50 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* UPDATED: Fixed height to h-16 (64px) for a compact look */}
           <div className="flex justify-between items-center h-16"> 
             
-            {/* 1. LOGO */}
+            {/* 1. LOGO SECTION */}
             <NavLink to="/" className="flex items-center gap-3 group shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
               <div className="relative">
                 <div className="absolute inset-0 bg-green-500 blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-700 rounded-full"></div>
@@ -54,11 +55,16 @@ function Layout() {
                   className="relative h-9 w-9 sm:h-10 sm:w-10 transition-transform duration-500 ease-out group-hover:rotate-12 group-hover:scale-110" 
                 />
               </div>
-              <div className="flex flex-col justify-center leading-none">
-                <span className="text-lg sm:text-xl font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-200 to-teal-400 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+              
+              {/* Text Container */}
+              <div className="flex flex-col justify-center pt-0.5">
+                {/* Title: Russo One Font */}
+                <span className="font-display text-lg sm:text-2xl tracking-wide uppercase bg-gradient-to-r from-green-400 via-emerald-200 to-teal-400 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] leading-none">
                   Track My Watts
                 </span>
-                <span className="text-[10px] font-bold text-yellow-400 tracking-[0.25em] uppercase mt-0.5 group-hover:text-yellow-300 transition-colors opacity-90">
+                
+                {/* Subtitle: Birthstone Signature Font */}
+                <span className="font-signature text-xl text-yellow-400 -mt-1 tracking-wide group-hover:text-yellow-300 transition-colors opacity-90">
                   By LMS
                 </span>
               </div>
@@ -111,6 +117,7 @@ function Layout() {
         {/* --- MOBILE DRAWER --- */}
         {isMobileMenuOpen && (
           <div className="md:hidden relative z-50">
+            {/* Matches h-16 header height (top-16) */}
             <div className="fixed inset-0 top-16 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="absolute top-0 left-0 w-full bg-slate-900 border-b border-slate-700 shadow-2xl animate-[slideDown_0.2s_ease-out]">
               <div className="px-4 py-3 space-y-1">
@@ -136,8 +143,7 @@ function Layout() {
         )}
       </nav>
 
-      {/* --- MAIN CONTENT (FIXED: Added min-h-[80vh]) --- */}
-      {/* This forces the content area to be tall, keeping the footer at the bottom even when loading */}
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[80vh]">
         <div key={location.pathname} className="animate-[softFadeUp_0.4s_cubic-bezier(0.16,1,0.3,1)]">
           <Outlet />
@@ -160,7 +166,8 @@ function Layout() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-pink-400 animate-[heartbeat_1.5s_ease-in-out_infinite]">
                 <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
               </svg>
-              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">by LMS</span>
+              {/* Signature Font in Footer */}
+              <span className="font-signature text-xl text-slate-600 ml-1">by LMS</span>
             </div>
 
             <div className="flex items-center px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-md text-white hover:shadow-lg hover:scale-105 transition-all cursor-default">

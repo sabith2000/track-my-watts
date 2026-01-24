@@ -13,6 +13,10 @@ export default {
       // NEW: Setting 'Inter' as the default font family
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
+        // Title Font (Russo One)
+        display: ['"Russo One"', 'sans-serif'],
+        // Added Custom Signature Font
+        signature: ['"Birthstone"', 'cursive'],
       },
     },
   },

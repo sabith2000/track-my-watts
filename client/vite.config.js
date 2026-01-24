@@ -8,7 +8,6 @@ import { resolve } from 'path';
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -20,36 +19,39 @@ export default defineConfig({
         name: 'Track My Watts',
         short_name: 'TrackMyWatts',
         description: 'Track your electricity consumption and manage billing cycles.',
-        theme_color: '#32343f',
-        background_color: '#32343f',
+        
+        // --- UPDATED: Dark Navy Brand Colors ---
+        theme_color: '#0f172a',      // Matches the Header
+        background_color: '#0f172a', // Matches the Splash Screen
+        
         display: 'standalone',
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable' // Ensures full-bleed icon on Android
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       },
-      // --- FIX: Increase Cache Limit for Large Libraries (ExcelJS/PDF) ---
+      // --- FIX: Increase Cache Limit for Large Libraries ---
       workbox: {
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // Limit increased to 4MB
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
   ],
   
-  // Define global constants
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
   },
 
-  // --- FIX: Increase Warning Limit to suppress console noise ---
   build: {
     chunkSizeWarningLimit: 3000,
   },

@@ -42,13 +42,11 @@ function Layout() {
       {/* --- HEADER --- */}
       <nav className="bg-slate-900 text-white shadow-xl sticky top-0 z-50 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Reduced height to h-16 for a tighter, pro look */}
           <div className="flex justify-between items-center h-16"> 
             
-            {/* 1. LOGO SECTION */}
+            {/* 1. LOGO */}
             <NavLink to="/" className="flex items-center gap-3 group shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
               <div className="relative">
-                {/* Glow Effect */}
                 <div className="absolute inset-0 bg-green-500 blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-700 rounded-full"></div>
                 <img 
                   src="/logo.png" 
@@ -66,7 +64,7 @@ function Layout() {
               </div>
             </NavLink>
 
-            {/* 2. DESKTOP NAVIGATION */}
+            {/* 2. DESKTOP NAV */}
             <div className="hidden md:flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <NavLink
@@ -83,15 +81,11 @@ function Layout() {
                   {({ isActive }) => (
                     <>
                       <span className="relative z-10">{item.name}</span>
-                      
-                      {/* Active Underline with Glow */}
                       <span className={`
                         absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-400 to-emerald-500 shadow-[0_0_10px_rgba(74,222,128,0.8)]
                         transition-transform duration-500 ease-out origin-left
                         ${isActive ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-50'}
                       `} />
-                      
-                      {/* Subtle Ambient Glow on Hover */}
                       <span className={`
                          absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 transition-opacity duration-300
                          ${isActive ? 'opacity-100' : 'group-hover:opacity-50'}
@@ -102,7 +96,7 @@ function Layout() {
               ))}
             </div>
 
-            {/* 3. MOBILE MENU BUTTON */}
+            {/* 3. MOBILE BUTTON */}
             <div className="flex items-center md:hidden">
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
@@ -142,29 +136,26 @@ function Layout() {
         )}
       </nav>
 
-      {/* --- MAIN CONTENT --- */}
-      <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Smoother Page Transition */}
+      {/* --- MAIN CONTENT (FIXED: Added min-h-[80vh]) --- */}
+      {/* This forces the content area to be tall, keeping the footer at the bottom even when loading */}
+      <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[80vh]">
         <div key={location.pathname} className="animate-[softFadeUp_0.4s_cubic-bezier(0.16,1,0.3,1)]">
           <Outlet />
         </div>
       </main>
 
-      {/* --- FOOTER (COMPACT & SINGLE LINE) --- */}
-      <footer className="bg-white border-t border-slate-100 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs sm:text-sm text-slate-500">
+      {/* --- FOOTER --- */}
+      <footer className="bg-white border-t border-slate-100 py-5 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs sm:text-sm text-slate-500">
           
-          {/* LEFT: Copyright */}
           <div className="flex items-center gap-3">
-            <span className="font-semibold text-slate-700">© {new Date().getFullYear()} TrackMyWatts</span>
+            <span className="font-bold text-slate-700 tracking-tight">© {new Date().getFullYear()} TrackMyWatts</span>
             <span className="hidden sm:inline w-px h-3 bg-slate-300"></span>
-            <span className="italic opacity-80">Powering Smart Decisions</span>
+            <span className="italic text-slate-400 font-medium">Powering Smart Decisions</span>
           </div>
 
-          {/* RIGHT: Credits & Version */}
           <div className="flex items-center gap-4">
-            {/* Made with Love Pill */}
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 hover:bg-pink-50 border border-slate-200 hover:border-pink-200 rounded-full transition-colors group cursor-default shadow-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm hover:border-pink-100 hover:shadow-md transition-all group cursor-default">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-pink-400 transition-colors">Made with</span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-pink-400 animate-[heartbeat_1.5s_ease-in-out_infinite]">
                 <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
@@ -172,16 +163,13 @@ function Layout() {
               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">by LMS</span>
             </div>
 
-            {/* Version Badge (Minimalist) */}
-            <div className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span className="font-mono text-[10px] font-medium tracking-tight">v{import.meta.env.VITE_APP_VERSION}</span>
+            <div className="flex items-center px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-md text-white hover:shadow-lg hover:scale-105 transition-all cursor-default">
+              <span className="font-mono text-[10px] font-bold tracking-wide">v{import.meta.env.VITE_APP_VERSION}</span>
             </div>
           </div>
         </div>
       </footer>
       
-      {/* --- CUSTOM ANIMATIONS --- */}
       <style>{`
         @keyframes softFadeUp {
           from { opacity: 0; transform: translateY(4px); }

@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import { exportToExcel, exportToPDF } from '../utils/exportHelper';
+// --- IMPORT THE GLOBAL LOADER ---
+import Loader from '../components/Loader';
 
 // --- HELPERS ---
 const todayFormattedForInput = () => {
@@ -33,25 +35,25 @@ const ChevronIcon = ({ isOpen }) => (
 );
 
 const PdfIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1.5">
         <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
     </svg>
 );
 
 const ExcelIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1.5">
         <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm5 5a.75.75 0 00-1.5 0v3.5h-3.5a.75.75 0 000 1.5h3.5v3.5a.75.75 0 001.5 0v-3.5h3.5a.75.75 0 000-1.5h-3.5V7z" clipRule="evenodd" />
     </svg>
 );
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 mr-1">
         <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
     </svg>
 );
 
 const LoaderIcon = () => (
-    <svg className="animate-spin -ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
@@ -81,14 +83,18 @@ const ActiveCycleCard = ({ cycle, onExport, loadingToken }) => {
                         disabled={loadingToken !== null}
                         className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded shadow-sm transition-colors border border-rose-500 ${loadingToken === `${cycle._id}-pdf` ? 'opacity-70 cursor-wait' : ''}`}
                     >
-                        {loadingToken === `${cycle._id}-pdf` ? <LoaderIcon /> : <PdfIcon />} Statement (PDF)
+                        {loadingToken === `${cycle._id}-pdf` ? <LoaderIcon /> : <PdfIcon />}
+                        <span className="hidden lg:inline">Statement (PDF)</span>
+                        <span className="lg:hidden">PDF</span>
                     </button>
                     <button 
                         onClick={(e) => onExport(e, cycle._id, 'excel')} 
                         disabled={loadingToken !== null}
                         className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded shadow-sm transition-colors border border-emerald-500 ${loadingToken === `${cycle._id}-excel` ? 'opacity-70 cursor-wait' : ''}`}
                     >
-                         {loadingToken === `${cycle._id}-excel` ? <LoaderIcon /> : <ExcelIcon />} Worksheet (Excel)
+                         {loadingToken === `${cycle._id}-excel` ? <LoaderIcon /> : <ExcelIcon />}
+                         <span className="hidden lg:inline">Worksheet (Excel)</span>
+                         <span className="lg:hidden">Excel</span>
                     </button>
                 </div>
             </div>
@@ -144,13 +150,13 @@ const ActiveCycleCard = ({ cycle, onExport, loadingToken }) => {
     );
 };
 
-// --- SUB-COMPONENT: HISTORY ROW (RESPONSIVE FIX) ---
+// --- SUB-COMPONENT: HISTORY ROW (REFINED GRID LAYOUT) ---
 const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
     const [expanded, setExpanded] = useState(false);
 
     return (
         <div className="border-b border-gray-100 last:border-0">
-            {/* Main Row */}
+            {/* Main Row: Desktop Grid / Mobile Stack */}
             <div 
                 onClick={() => setExpanded(!expanded)} 
                 className={`group grid grid-cols-1 sm:grid-cols-12 gap-4 items-center p-4 cursor-pointer transition-colors duration-200 ${expanded ? 'bg-indigo-50/40' : 'hover:bg-slate-50'}`}
@@ -353,7 +359,8 @@ function BillingCyclesPage() {
     } finally { setIsSubmitting(false); }
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading Billing Data...</div>;
+  // --- FIX: USE GLOBAL LOADER HERE ---
+  if (loading) return <Loader text="Loading Billing Cycles...." />;
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">

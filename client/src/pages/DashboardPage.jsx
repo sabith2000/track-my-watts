@@ -4,9 +4,9 @@ import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import AddReadingForm from '../components/AddReadingForm'; 
 import MeterCard from '../components/MeterCard';
-import Loader from '../components/Loader'; // --- NEW IMPORT ---
+import Loader from '../components/Loader';
 
-// ... (Keep existing Helper functions: formatDate, formatCurrency, todayFormattedForInput) ...
+// --- HELPER FUNCTIONS ---
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
@@ -29,10 +29,29 @@ const todayFormattedForInput = () => {
   return `${year}-${month}-${day}`;
 };
 
-// ... (Keep existing Icons: BillIcon, ZapIcon, CalendarIcon, PlusIcon if used) ...
-const BillIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 015.25 4.5h-.75m-1.5 0v.75A.75.75 0 013 6h-.75m0 0h.75A.75.75 0 013.75 6v.75m0 0v-.75A.75.75 0 013.75 4.5h.75m9 13.5h3.375c.621 0 1.125-.504 1.125-1.125V9.11c0-.621-.504-1.125-1.125-1.125H9.75M12 15.75V9.113m0 0a3.001 3.001 0 00-3 0m3 0a3.001 3.001 0 01-3 0m0 0A3.001 3.001 0 009 9.113m0 0a3.001 3.001 0 013 0m0 0V3m6.12 3.03l.001.001M12 18.75M12 6.75h.008v.008H12V6.75z" /></svg>);
-const ZapIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>);
-const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" /></svg>);
+// --- IMPROVED ICONS ---
+const RupeeBillIcon = () => (
+  // A clearer "Invoice/Bill" shape with lines and a Rupee symbol
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 13.5h.75m-3.75 0h.008v.008H6V13.5zm3.75 0h.008v.008H9.75V13.5zm-3.75 3h.008v.008H6V16.5zm3.75 0h.008v.008H9.75V16.5zm3.75 0h.008v.008H13.5V16.5zm0-3h.008v.008H13.5V13.5z" />
+    {/* Rupee Symbol Overlay */}
+    <circle cx="17" cy="7" r="5" className="fill-emerald-100/50" /> 
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 5h4M15 7h4M15.5 5c0 1.5 1.5 2.5 3 2.5a2.5 2.5 0 01-2.5 2.5l3 3" />
+  </svg>
+);
+
+const PowerMeterIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+  </svg>
+);
+
+const TimeProgressIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -129,7 +148,6 @@ function DashboardPage() {
   };
 
   if (loading && !dashboardData) {
-    // --- UPDATED LOADING STATE ---
     return <Loader text="Loading Dashboard..." />;
   }
   if (error && !dashboardData) {
@@ -149,7 +167,6 @@ function DashboardPage() {
     dashboardData.meterSummaries.reduce((acc, meter) => acc + meter.currentCycleConsumption, 0) : 0
     : 0;
 
-  // Prepare list of meters for AddReadingForm (formatted for dropdown if needed)
   const availableMetersForForm = dashboardData.meterSummaries.map(m => ({ _id: m.meterId, name: m.meterName, meterType: m.meterType }));
 
   return (
@@ -223,34 +240,53 @@ function DashboardPage() {
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* --- UPDATED: Modern Summary Cards (Stronger Tints) --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white shadow-lg rounded-lg p-6 flex items-center gap-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="bg-sky-100 text-sky-600 p-4 rounded-full flex-shrink-0"><BillIcon /></div>
+        
+        {/* Card 1: Estimated Bill (Emerald/Money Theme) */}
+        {/* Increased color weight to 100/200 for better visibility */}
+        <div className="bg-emerald-50 border border-emerald-200 shadow-sm rounded-xl p-6 flex items-center gap-5 transition-all duration-300 hover:shadow-md hover:shadow-emerald-100/50 hover:-translate-y-1 group">
+            <div className="bg-white border border-emerald-200 text-emerald-600 p-3 rounded-full flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                <RupeeBillIcon />
+            </div>
             <div>
-                <h3 className="text-base font-semibold text-slate-500 uppercase tracking-wider">Estimated Bill</h3>
-                <p className="text-3xl font-bold text-slate-800 mt-1">{formatCurrency(dashboardData?.currentCycleTotalBill)}</p>
+                <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wide opacity-80">Estimated Bill</h3>
+                <p className="text-3xl font-extrabold text-emerald-900 mt-1">{formatCurrency(dashboardData?.currentCycleTotalBill)}</p>
             </div>
         </div>
-        <div className="bg-white shadow-lg rounded-lg p-6 flex items-center gap-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="bg-amber-100 text-amber-600 p-4 rounded-full flex-shrink-0"><ZapIcon /></div>
+
+        {/* Card 2: Total Consumption (Amber/Energy Theme) */}
+        <div className="bg-amber-50 border border-amber-200 shadow-sm rounded-xl p-6 flex items-center gap-5 transition-all duration-300 hover:shadow-md hover:shadow-amber-100/50 hover:-translate-y-1 group">
+            <div className="bg-white border border-amber-200 text-amber-500 p-3 rounded-full flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                <PowerMeterIcon />
+            </div>
             <div>
-                <h3 className="text-base font-semibold text-slate-500 uppercase tracking-wider">Total Consumption</h3>
-                <p className="text-3xl font-bold text-slate-800 mt-1">{totalCurrentConsumption.toFixed(2)} <span className="text-xl font-medium text-slate-400">units</span></p>
+                <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wide opacity-80">Total Consumption</h3>
+                <p className="text-3xl font-extrabold text-amber-900 mt-1">
+                    {totalCurrentConsumption.toFixed(2)} 
+                    <span className="text-lg font-semibold text-amber-700 ml-1">units</span>
+                </p>
             </div>
         </div>
-        <div className="bg-white shadow-lg rounded-lg p-6 flex items-center gap-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="bg-indigo-100 text-indigo-600 p-4 rounded-full flex-shrink-0"><CalendarIcon /></div>
+
+        {/* Card 3: Days in Cycle (Blue/Time Theme) */}
+        <div className="bg-blue-50 border border-blue-200 shadow-sm rounded-xl p-6 flex items-center gap-5 transition-all duration-300 hover:shadow-md hover:shadow-blue-100/50 hover:-translate-y-1 group">
+            <div className="bg-white border border-blue-200 text-blue-500 p-3 rounded-full flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                <TimeProgressIcon />
+            </div>
             <div>
-                <h3 className="text-base font-semibold text-slate-500 uppercase tracking-wider">Days in Cycle</h3>
-                <p className="text-3xl font-bold text-slate-800 mt-1">{dashboardData?.currentBillingCycle?.daysInCycle || 'N/A'}</p>
+                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide opacity-80">Days in Cycle</h3>
+                <p className="text-3xl font-extrabold text-blue-900 mt-1">
+                    {dashboardData?.currentBillingCycle?.daysInCycle || '0'} 
+                    <span className="text-lg font-semibold text-blue-700 ml-1">days</span>
+                </p>
             </div>
         </div>
       </div>
 
       {dashboardData && (
         <>
-          {/* Meter Details Section (Cleaned up) */}
+          {/* Meter Details Section */}
           <div className="space-y-6">
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-700">Meter Details</h2>
             {Array.isArray(dashboardData.meterSummaries) && dashboardData.meterSummaries.length > 0 ? (
@@ -264,26 +300,36 @@ function DashboardPage() {
             ) : (<p className="text-sm text-gray-600">No meter data available for summary.</p>)}
           </div>
           
-          {/* Cycle Details Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
-            <div className="bg-white shadow-md rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-slate-700 mb-3">Current Billing Cycle Details</h3>
-              <div className="space-y-2 text-sm">
-                  <p className="text-gray-700">Start Date: <span className="font-medium">{formatDate(dashboardData.currentBillingCycle.startDate)}</span></p>
-                  <p className="text-gray-700">Status: <span className="font-medium capitalize">{dashboardData.currentBillingCycle.status}</span></p>
-                  {dashboardData.currentBillingCycle.notes && (<p className="text-xs text-gray-500 mt-2">Notes: {dashboardData.currentBillingCycle.notes}</p>)}
-                  <div className="pt-3 mt-3 border-t">
-                      <p className="text-xs uppercase text-slate-500">Active Tariff</p>
-                      <p className="font-semibold text-slate-700">{dashboardData.activeSlabConfiguration.configName}</p>
+          {/* Cycle Details Section (Reverted to subtle/clean style) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-200">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-slate-700 mb-3 border-b pb-2">Current Billing Cycle Details</h3>
+              <div className="space-y-3 text-sm">
+                  <p className="text-gray-700">Start Date: <span className="font-medium text-slate-900">{formatDate(dashboardData.currentBillingCycle.startDate)}</span></p>
+                  <p className="text-gray-700">Status: <span className="font-medium capitalize text-slate-900">{dashboardData.currentBillingCycle.status}</span></p>
+                  
+                  {dashboardData.currentBillingCycle.notes && (
+                    <p className="text-gray-500 italic mt-1">Notes: {dashboardData.currentBillingCycle.notes}</p>
+                  )}
+                  
+                  <div className="pt-3 mt-2 border-t border-slate-100">
+                      <p className="text-xs uppercase text-slate-400 font-bold mb-1">Active Tariff Plan</p>
+                      <p className="text-slate-700 font-medium">
+                        {dashboardData.activeSlabConfiguration.configName}
+                      </p>
                   </div>
               </div>
             </div>
 
             {dashboardData.previousBillingCycle && (
-              <div className="bg-white shadow-md rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Previous Billing Cycle Details</h3>
-                <p className="text-sm text-gray-700">Period: <span className="font-medium">{formatDate(dashboardData.previousBillingCycle.startDate)}</span> - <span className="font-medium">{formatDate(dashboardData.previousBillingCycle.endDate)}</span></p>
-                 {dashboardData.previousBillingCycle.notes && (<p className="text-xs text-gray-500 mt-1">Notes: {dashboardData.previousBillingCycle.notes}</p>)}
+              <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 opacity-80 hover:opacity-100 transition-opacity">
+                <h3 className="text-lg font-semibold text-slate-600 mb-3 border-b pb-2">Previous Billing Cycle Details</h3>
+                <div className="space-y-3 text-sm">
+                    <p className="text-gray-700">Period: <span className="font-medium text-slate-900">{formatDate(dashboardData.previousBillingCycle.startDate)} — {formatDate(dashboardData.previousBillingCycle.endDate)}</span></p>
+                    {dashboardData.previousBillingCycle.notes && (
+                        <p className="text-gray-500 italic mt-1">Notes: {dashboardData.previousBillingCycle.notes}</p>
+                    )}
+                </div>
               </div>
             )}
           </div>

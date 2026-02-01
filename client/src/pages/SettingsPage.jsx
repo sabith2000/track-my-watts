@@ -3,20 +3,32 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import { toast } from 'react-toastify';
 import SlabRateManager from '../components/SlabRateManager';
-import Loader from '../components/Loader'; // --- NEW IMPORT ---
+import Loader from '../components/Loader';
+
+// --- ICONS ---
+const CogIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>);
+
+// --- UPDATED: Rupee Icon ---
+const RupeeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 8.25H9m6 3H9m3 6l-3-3h1.5a3 3 0 100-6M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>);
+
+const PencilIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>);
+const CheckBadgeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.491 4.491 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>);
+const RefreshIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>);
 
 function SettingsPage() {
+  // --- STATE ---
+  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'tariffs'
+
   const [meters, setMeters] = useState([]);
   const [generalPurposeMeters, setGeneralPurposeMeters] = useState([]);
   const [selectedActiveMeterId, setSelectedActiveMeterId] = useState('');
   
-  // Loading State
   const [loading, setLoading] = useState(true);
-
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUpdatingMeter, setIsUpdatingMeter] = useState(false);
 
-  // Meter Editing State
+  // Meter Editing Modal State
+  const [showEditMeterModal, setShowEditMeterModal] = useState(false);
   const [editingMeterId, setEditingMeterId] = useState(null);
   const [editingMeterName, setEditingMeterName] = useState('');
   const [editingMeterDescription, setEditingMeterDescription] = useState('');
@@ -33,7 +45,7 @@ function SettingsPage() {
   const [selectedActiveSlabConfigId, setSelectedActiveSlabConfigId] = useState('');
   const [isUpdatingSlab, setIsUpdatingSlab] = useState(false);
 
-  // --- Data Fetching ---
+  // --- DATA FETCHING ---
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
@@ -74,49 +86,65 @@ function SettingsPage() {
     loadAllData();
   }, [loadAllData]);
 
-  // --- Handlers: Meters ---
-  const handleEditClick = (meter) => {
+  // --- HANDLERS: METERS ---
+  const openEditMeterModal = (meter) => {
     setEditingMeterId(meter._id);
     setEditingMeterName(meter.name);
     setEditingMeterDescription(meter.description || '');
+    setShowEditMeterModal(true);
   };
 
-  const handleCancelEdit = () => {
+  const closeEditMeterModal = () => {
+    setShowEditMeterModal(false);
     setEditingMeterId(null);
     setEditingMeterName('');
     setEditingMeterDescription('');
   };
 
-  const handleSaveMeter = async (meterId) => {
+  const handleSaveMeter = async (e) => {
+    e.preventDefault();
     if (!editingMeterName.trim()) { toast.warn("Name cannot be empty."); return; }
+    
     setIsUpdating(true);
     try {
-      await apiClient.put(`/meters/${meterId}`, { name: editingMeterName, description: editingMeterDescription });
-      toast.success("Meter updated!");
-      setEditingMeterId(null);
+      await apiClient.put(`/meters/${editingMeterId}`, { name: editingMeterName, description: editingMeterDescription });
+      toast.success("Meter updated successfully!");
+      closeEditMeterModal();
       // Partial refresh
-      const response = await apiClient.get('/meters');
-      setMeters(response.data || []);
-    } catch (err) { toast.error('Update failed.'); } 
-    finally { setIsUpdating(false); }
-  };
-
-  const handleSaveActiveMeter = async () => {
-    if (!selectedActiveMeterId) return;
-    setIsUpdatingMeter(true);
-    try {
-      await apiClient.put(`/meters/${selectedActiveMeterId}/set-active-general`);
-      toast.success('Active meter updated!');
-      // Refresh meters to update UI tags
       const response = await apiClient.get('/meters');
       const allMeters = response.data || [];
       setMeters(allMeters);
       setGeneralPurposeMeters(allMeters.filter(m => m.isGeneralPurpose));
-    } catch (err) { toast.error('Failed to update active meter.'); } 
-    finally { setIsUpdatingMeter(false); }
+    } catch (err) { 
+        toast.error('Update failed.'); 
+    } finally { 
+        setIsUpdating(false); 
+    }
   };
 
-  // --- Handlers: Settings (Target) ---
+  // Unified Handler: Sets the state AND calls the API for immediate effect
+  const handleSetActiveMeter = async (meterId) => {
+    if (!meterId) return;
+    setIsUpdatingMeter(true);
+    try {
+      setSelectedActiveMeterId(meterId); // Optimistic UI update
+      await apiClient.put(`/meters/${meterId}/set-active-general`);
+      toast.success('Active meter updated!');
+      
+      // Refresh meters to update UI tags from backend source of truth
+      const response = await apiClient.get('/meters');
+      const allMeters = response.data || [];
+      setMeters(allMeters);
+      setGeneralPurposeMeters(allMeters.filter(m => m.isGeneralPurpose));
+    } catch (err) { 
+        toast.error('Failed to update active meter.'); 
+        loadAllData(); // Revert on error
+    } finally { 
+        setIsUpdatingMeter(false); 
+    }
+  };
+
+  // --- HANDLERS: SETTINGS (TARGET) ---
   const handleSaveSettingsClick = () => {
     const newTarget = parseInt(consumptionTargetInput, 10);
     if (newTarget === consumptionTarget) return; 
@@ -152,14 +180,13 @@ function SettingsPage() {
       setConsumptionTargetInput('500');
   };
 
-  // --- Handlers: Slabs ---
+  // --- HANDLERS: SLABS ---
   const handleSaveActiveSlabConfig = async () => {
     if (!selectedActiveSlabConfigId) { toast.warn("Please select a config."); return; }
     setIsUpdatingSlab(true);
     try {
       await apiClient.put(`/slabs/${selectedActiveSlabConfigId}/activate`);
       toast.success('Slab configuration activated!');
-      // Refresh slabs
       const response = await apiClient.get('/slabs');
       setSlabConfigs(response.data || []);
     } catch (err) { toast.error('Activation failed.'); }
@@ -168,130 +195,240 @@ function SettingsPage() {
 
   const isTargetChanged = parseInt(consumptionTargetInput, 10) !== consumptionTarget;
 
-  if (loading) return <Loader text="Loading Settings..." />; // --- UPDATED LOADING ---
+  // Helper: Meter Badge Color
+  const getMeterBadgeColor = (name) => {
+    if (!name) return 'bg-gray-100 text-gray-800 border-gray-200';
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('main')) return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (lowerName.includes('ac')) return 'bg-orange-100 text-orange-700 border-orange-200';
+    if (lowerName.includes('sub') || lowerName.includes('backup')) return 'bg-purple-100 text-purple-700 border-purple-200';
+    return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  };
+
+  if (loading) return <Loader text="Loading Settings..." />;
 
   return (
-    <div className="p-4 sm:p-6 space-y-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Settings</h1>
+    <div className="p-4 sm:p-6 space-y-6">
       
-      {/* 1. Target Settings */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-4">Application Settings</h2>
-        <div className="max-w-md space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Custom Consumption Target (units)</label>
-            <input type="number" value={consumptionTargetInput} onChange={(e) => setConsumptionTargetInput(e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-            <p className="text-xs text-gray-500 mt-2">Default value: 500 units</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button 
-                onClick={handleSaveSettingsClick} 
-                disabled={isUpdating || !isTargetChanged || !consumptionTargetInput} 
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-                {isUpdating ? 'Updating...' : 'Update Target'}
-            </button>
-
-            {consumptionTargetInput !== '500' && (
-                <button 
-                    onClick={handleResetToDefault}
-                    disabled={isUpdating}
-                    className="px-4 py-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium rounded-md transition-colors"
-                    title="Reset input to default 500 units"
-                >
-                    Reset to Default
-                </button>
-            )}
-          </div>
-        </div>
+      {/* --- HEADER --- */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Settings</h1>
+        <p className="text-sm text-gray-500 mt-1">Configure your meters, targets, and tariff plans</p>
       </div>
-      
-      {/* 2. Manage Meters */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-4">Manage Meters</h2>
-        <div className="space-y-3">
-          {meters.map((meter) => (
-            <div key={meter._id} className="p-4 border border-gray-200 rounded-lg transition-all duration-300 hover:shadow-md">
-              {editingMeterId === meter._id ? (
-                <div className="space-y-3">
-                  <input type="text" value={editingMeterName} onChange={(e) => setEditingMeterName(e.target.value)} className="block w-full p-2 border rounded" autoFocus />
-                  <input type="text" value={editingMeterDescription} onChange={(e) => setEditingMeterDescription(e.target.value)} className="block w-full p-2 border rounded" />
-                  <div className="flex justify-end gap-2">
-                    <button onClick={handleCancelEdit} className="px-3 py-1 bg-gray-200 rounded">Cancel</button>
-                    <button onClick={() => handleSaveMeter(meter._id)} className="px-3 py-1 bg-green-600 text-white rounded">Save</button>
-                  </div>
+
+      {/* --- TABS --- */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('general')}
+            className={`
+              flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+              ${activeTab === 'general' 
+                ? 'border-indigo-500 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+            `}
+          >
+            <CogIcon />
+            General & Meters
+          </button>
+          <button
+            onClick={() => setActiveTab('tariffs')}
+            className={`
+              flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+              ${activeTab === 'tariffs' 
+                ? 'border-indigo-500 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+            `}
+          >
+            {/* UPDATED: Rupee Icon */}
+            <RupeeIcon />
+            Tariff Configurations
+          </button>
+        </nav>
+      </div>
+
+      {/* ================= TAB 1: GENERAL & METERS ================= */}
+      {activeTab === 'general' && (
+        <div className="space-y-8 animate-[fadeIn_0.2s_ease-out]">
+            
+            {/* --- UPDATED: APP SETTINGS (Modern Hero Card) --- */}
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-indigo-50 p-1.5 rounded-lg text-indigo-600">
+                            <CogIcon />
+                        </div>
+                        <h2 className="text-lg font-bold text-gray-800">Monthly Consumption Goal</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 max-w-lg leading-relaxed">
+                        Set a budget limit (in units) for your electricity usage. This target powers the visual progress bars on your dashboard to help you stay on track.
+                    </p>
                 </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-lg">{meter.name}</p>
-                    <p className="text-sm text-gray-500">{meter.description}</p>
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 mt-2 sm:mt-0">
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">{meter.isGeneralPurpose ? "General" : "Dedicated"}</span>
-                    <button onClick={() => handleEditClick(meter)} className="text-indigo-600 font-medium">Edit</button>
-                  </div>
+
+                <div className="w-full md:w-auto flex flex-col items-end gap-3">
+                    <div className="flex w-full md:w-auto shadow-sm rounded-lg overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
+                        <input 
+                            type="number" 
+                            value={consumptionTargetInput} 
+                            onChange={(e) => setConsumptionTargetInput(e.target.value)}
+                            className="block w-full md:w-32 py-2.5 pl-4 pr-2 border-none focus:ring-0 text-gray-900 font-bold text-lg text-right bg-gray-50/50" 
+                            placeholder="500"
+                        />
+                        <span className="flex items-center bg-gray-50 text-gray-500 text-sm font-medium px-3 border-l border-gray-200">
+                            units
+                        </span>
+                        <button 
+                            onClick={handleSaveSettingsClick} 
+                            disabled={isUpdating || !isTargetChanged || !consumptionTargetInput} 
+                            className="bg-indigo-600 text-white px-5 py-2 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-colors border-l border-indigo-700"
+                        >
+                            {isUpdating ? 'Saving...' : 'Update'}
+                        </button>
+                    </div>
+
+                    {consumptionTargetInput !== '500' && (
+                        <button 
+                            onClick={handleResetToDefault} 
+                            disabled={isUpdating} 
+                            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-indigo-600 transition-colors pr-1"
+                        >
+                            <RefreshIcon /> Reset to default (500)
+                        </button>
+                    )}
                 </div>
-              )}
             </div>
-          ))}
+
+            {/* 2. METER MANAGEMENT (Card Grid) */}
+            <div>
+                <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">Manage Meters</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {meters.map((meter) => {
+                        const isActive = meter.isCurrentlyActiveGeneral;
+                        return (
+                            <div 
+                                key={meter._id} 
+                                className={`
+                                    relative p-5 bg-white border rounded-xl shadow-sm transition-all duration-300 hover:shadow-md group
+                                    ${isActive ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'}
+                                `}
+                            >
+                                {/* Header */}
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getMeterBadgeColor(meter.name)}`}>
+                                        {meter.name}
+                                    </span>
+                                    {isActive && (
+                                        <div className="flex items-center gap-1 text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-200">
+                                            <CheckBadgeIcon /> Active
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Content */}
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-500 italic min-h-[1.25rem] line-clamp-2">
+                                        {meter.description || 'No description provided'}
+                                    </p>
+                                    <p className="text-xs font-mono text-gray-400 mt-3 uppercase tracking-wide">
+                                        {meter.isGeneralPurpose ? "General Purpose" : "Dedicated Meter"}
+                                    </p>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
+                                    <button 
+                                        onClick={() => openEditMeterModal(meter)} 
+                                        className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 font-medium transition-colors p-1 -ml-1 rounded hover:bg-gray-50"
+                                    >
+                                        <PencilIcon /> Edit
+                                    </button>
+
+                                    {/* Show "Set Active" only for General Purpose meters that are NOT active */}
+                                    {meter.isGeneralPurpose && !isActive && (
+                                        <button 
+                                            onClick={() => handleSetActiveMeter(meter._id)}
+                                            disabled={isUpdatingMeter}
+                                            className="text-xs bg-slate-100 hover:bg-green-600 hover:text-white text-slate-700 px-3 py-1.5 rounded-md font-semibold transition-all shadow-sm"
+                                        >
+                                            Set Active
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. Active Meter Selector */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-slate-700 mb-1">Active General Purpose Meter</h2>
-        <p className="text-sm text-gray-500 mb-4">Select which general purpose meter is currently in use.</p>
-        <div className="space-y-3">
-            {generalPurposeMeters.map((meter) => (
-              <label key={meter._id} className="flex items-center p-3 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors duration-200 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
-                <input type="radio" name="activeGeneralMeter" value={meter._id} checked={selectedActiveMeterId === meter._id} onChange={() => setSelectedActiveMeterId(meter._id)} className="h-5 w-5 text-indigo-600 border-gray-300 focus:ring-indigo-500"/>
-                <span className="ml-3 font-medium text-gray-800">{meter.name}</span>
-                <span className="ml-2 text-sm text-gray-500">({meter.meterType})</span>
-                {meter.isCurrentlyActiveGeneral && <span className="ml-auto text-xs font-semibold py-0.5 px-2 bg-green-200 text-green-800 rounded-full">Currently Active</span>}
-              </label>
-            ))}
-            <button onClick={handleSaveActiveMeter} disabled={isUpdatingMeter || !selectedActiveMeterId || (generalPurposeMeters.find(m => m._id === selectedActiveMeterId)?.isCurrentlyActiveGeneral)} className="mt-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                {isUpdatingMeter ? 'Saving...' : 'Set Selected Meter as Active'}
-            </button>
+      {/* ================= TAB 2: TARIFF CONFIGURATIONS ================= */}
+      {activeTab === 'tariffs' && (
+        <div className="animate-[fadeIn_0.2s_ease-out]">
+            {/* We wrap the existing manager so functionality remains 100% same */}
+            <SlabRateManager 
+                slabConfigs={slabConfigs} 
+                selectedConfigId={selectedActiveSlabConfigId}
+                onSelectConfig={setSelectedActiveSlabConfigId}
+                onSaveActive={handleSaveActiveSlabConfig}
+                onRefresh={loadAllData} 
+                isUpdating={isUpdatingSlab}
+            />
         </div>
-      </div>
+      )}
 
-      {/* 4. Slab Manager */}
-      <SlabRateManager 
-        slabConfigs={slabConfigs} 
-        selectedConfigId={selectedActiveSlabConfigId}
-        onSelectConfig={setSelectedActiveSlabConfigId}
-        onSaveActive={handleSaveActiveSlabConfig}
-        onRefresh={loadAllData} // Refreshes everything
-        isUpdating={isUpdatingSlab}
-      />
+      {/* --- MODAL: EDIT METER --- */}
+      {showEditMeterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-gray-800">Edit Meter Details</h3>
+                    <button onClick={closeEditMeterModal} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <form onSubmit={handleSaveMeter} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Meter Name</label>
+                        <input 
+                            type="text" 
+                            value={editingMeterName} 
+                            onChange={(e) => setEditingMeterName(e.target.value)} 
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Description (Optional)</label>
+                        <input 
+                            type="text" 
+                            value={editingMeterDescription} 
+                            onChange={(e) => setEditingMeterDescription(e.target.value)} 
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button type="button" onClick={closeEditMeterModal} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                        <button type="submit" disabled={isUpdating} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-md disabled:opacity-50">
+                            {isUpdating ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
 
-      {/* Confirmation Modal */}
+      {/* --- MODAL: CONFIRM TARGET UPDATE --- */}
       {showTargetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
             <h3 className="text-lg font-bold text-gray-800 mb-3">Update Target?</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to change the consumption target to <span className="font-bold text-indigo-600">{consumptionTargetInput} units</span>? 
+            <p className="text-gray-600 mb-4 text-sm">
+              Change consumption target to <span className="font-bold text-indigo-600">{consumptionTargetInput} units</span>? 
               <br/><br/>
-              <span className="text-xs text-gray-500">This will update the progress bars on your dashboard immediately.</span>
+              This will immediately update the progress bars on your dashboard.
             </p>
             <div className="flex justify-end space-x-3">
-              <button 
-                onClick={cancelSaveSettings} 
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmSaveSettings} 
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm"
-              >
-                Yes, Update
-              </button>
+              <button onClick={cancelSaveSettings} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={confirmSaveSettings} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm">Yes, Update</button>
             </div>
           </div>
         </div>

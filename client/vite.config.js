@@ -14,13 +14,14 @@ export default defineConfig({
     // --- PWA CONFIGURATION ---
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      // UPDATED: Only include assets that actually exist in your public folder
+      includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'Track My Watts',
         short_name: 'TrackMyWatts',
         description: 'Track your electricity consumption and manage billing cycles.',
         
-        // --- UPDATED: Dark Navy Brand Colors ---
+        // --- Dark Navy Brand Colors ---
         theme_color: '#0f172a',      // Matches the Header
         background_color: '#0f172a', // Matches the Splash Screen
         
@@ -40,7 +41,7 @@ export default defineConfig({
           }
         ]
       },
-      // --- FIX: Increase Cache Limit for Large Libraries ---
+      // --- Cache Limit for Large Libraries ---
       workbox: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']

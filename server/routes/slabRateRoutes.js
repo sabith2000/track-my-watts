@@ -6,7 +6,8 @@ const {
     getSlabRateConfigs,
     getActiveSlabRateConfig,
     setActiveSlabRateConfig,
-    deleteSlabRateConfig
+    deleteSlabRateConfig,
+    updateSlabRateConfig // <-- ADDED
 } = require('../controllers/slabRateController');
 
 router.route('/')
@@ -20,6 +21,7 @@ router.route('/:id/activate')
    .put(setActiveSlabRateConfig);
 
 router.route('/:id')
+   .put(updateSlabRateConfig) // <-- ADDED
    .delete(deleteSlabRateConfig);
 
 module.exports = router;

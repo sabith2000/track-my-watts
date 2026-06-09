@@ -11,11 +11,13 @@ const BillingCycle = require('../models/BillingCycle');
 
 exports.addReading = async (req, res) => {
   try {
-    const { meterId, date, readingValue, notes, isEstimated } = req.body;
+    let { meterId, date, readingValue, notes, isEstimated } = req.body;
 
-    if (!meterId || !date || readingValue === undefined) {
-      return res.status(400).json({ message: 'Meter ID, date, and reading value are required.' });
+    const newReadingValueFloat = parseFloat(readingValue);
+    if (!meterId || !date || isNaN(newReadingValueFloat)) {
+      return res.status(400).json({ message: 'Meter ID, date, and valid numeric reading value are required.' });
     }
+    notes = notes ? String(notes).trim() : '';
 
     const meterExists = await Meter.findById(meterId);
     if (!meterExists) {
@@ -36,7 +38,6 @@ exports.addReading = async (req, res) => {
       .sort({ date: -1, createdAt: -1 });
 
     let unitsConsumed = 0;
-    const newReadingValueFloat = parseFloat(readingValue); // Ensure it's a number
 
     if (previousReading) {
       // --- START OF NEW VALIDATION ---
@@ -213,13 +214,41 @@ exports.deleteReading = async (req, res) => {
             return res.status(404).json({ message: 'Reading not found.' });
         }
 
+        const deletedMeterId = reading.meter;
+        const deletedDate = reading.date;
+        const deletedCreatedAt = reading.createdAt;
+
         await reading.deleteOne(); // or reading.remove() for older Mongoose
 
-        // IMPORTANT: Deleting a reading can break the chain for `unitsConsumedSincePrevious`
-        // for the *next* reading. A full system would need to find the reading that
-        // followed the deleted one and recalculate its `unitsConsumedSincePrevious`.
-        // For this version, we'll keep it simple and the user must be aware.
-        res.status(200).json({ message: 'Reading deleted successfully. Note: Consumption for subsequent readings may need manual review.' });
+        // --- CHAIN REPAIR LOGIC ---
+        // Find the next reading chronologically
+        const nextReading = await Reading.findOne({
+            meter: deletedMeterId,
+            $or: [
+                { date: { $gt: deletedDate } },
+                { date: deletedDate, createdAt: { $gt: deletedCreatedAt } }
+            ]
+        }).sort({ date: 1, createdAt: 1 });
+
+        if (nextReading) {
+            // Find the new previous reading relative to the next reading
+            const newPreviousReading = await Reading.findOne({
+                meter: deletedMeterId,
+                $or: [
+                    { date: { $lt: nextReading.date } },
+                    { date: nextReading.date, createdAt: { $lt: nextReading.createdAt } }
+                ]
+            }).sort({ date: -1, createdAt: -1 });
+
+            if (newPreviousReading) {
+                nextReading.unitsConsumedSincePrevious = nextReading.readingValue - newPreviousReading.readingValue;
+            } else {
+                nextReading.unitsConsumedSincePrevious = 0; // It's now the first reading
+            }
+            await nextReading.save();
+        }
+
+        res.status(200).json({ message: 'Reading deleted successfully. Subsequent consumption chain auto-repaired.' });
 
     } catch (error) {
         console.error('Error deleting reading:', error);

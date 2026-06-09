@@ -198,24 +198,18 @@ function ReadingsPage() {
   };
 
   // --- UPDATED: Meter Badge Color Logic ---
-  const getMeterBadgeColor = (name) => {
-    if (!name) return 'bg-gray-100 text-gray-800 border-gray-200';
-    const lowerName = name.toLowerCase();
+  const getMeterBadgeTheme = (meterId) => {
+    const meter = availableMeters.find(m => m._id === meterId);
+    const theme = meter?.colorTheme || 'emerald';
     
-    // Main Meter = Blue
-    if (lowerName.includes('main')) {
-      return 'bg-blue-100 text-blue-700 border-blue-200';
-    } 
-    // AC Meter = Orange (New color for distinction)
-    else if (lowerName.includes('AC')) {
-      return 'bg-orange-100 text-orange-700 border-orange-200';
+    switch(theme) {
+      case 'blue': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'orange': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'purple': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'rose': return 'bg-rose-100 text-rose-700 border-rose-200';
+      case 'emerald':
+      default: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     }
-    // Sub/Backup Meter = Purple
-    else if (lowerName.includes('sub') || lowerName.includes('backup')) {
-      return 'bg-purple-100 text-purple-700 border-purple-200';
-    }
-    // Default = Emerald
-    return 'bg-emerald-100 text-emerald-700 border-emerald-200';
   };
 
   return (
@@ -320,7 +314,7 @@ function ReadingsPage() {
                       <tr key={reading._id} className="hover:bg-indigo-50/30 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{formatDate(reading.date)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getMeterBadgeColor(reading.meter?.name)}`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getMeterBadgeTheme(reading.meter?._id)}`}>
                                 {reading.meter?.name || 'Unknown'}
                             </span>
                         </td>
@@ -346,7 +340,7 @@ function ReadingsPage() {
                       <div key={reading._id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
                           <div className="flex justify-between items-start">
                               <div>
-                                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getMeterBadgeColor(reading.meter?.name)}`}>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getMeterBadgeTheme(reading.meter?._id)}`}>
                                       {reading.meter?.name || 'Unknown'}
                                   </span>
                                   <p className="text-sm text-gray-500 mt-1 font-medium">{formatDate(reading.date)}</p>

@@ -53,7 +53,10 @@ const TimeProgressIcon = () => (
   </svg>
 );
 
+import { useNavigate } from 'react-router-dom';
+
 function DashboardPage() {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,6 +76,7 @@ function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
+      
       const response = await apiClient.get('/dashboard/summary');
       setDashboardData(response.data);
     } catch (err) {
@@ -84,7 +88,7 @@ function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     fetchDashboardData();

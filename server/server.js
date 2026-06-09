@@ -12,7 +12,8 @@ const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const readingRoutes = require('./routes/readingRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
-const settingsRoutes = require('./routes/settingsRoutes'); // --- NEW IMPORT ---
+const settingsRoutes = require('./routes/settingsRoutes'); 
+const systemRoutes = require('./routes/systemRoutes'); // --- NEW IMPORT ---
 const Meter = require('./models/Meter');
 
 // Load environment variables from .env file
@@ -35,7 +36,8 @@ app.use('/api/billing-cycles', billingCycleRoutes);
 app.use('/api/readings', readingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/settings', settingsRoutes); // --- NEW ROUTE ---
+app.use('/api/settings', settingsRoutes);
+app.use('/api/system', systemRoutes); // --- NEW ROUTE ---
 
 // Serve Frontend in Production
 if (process.env.NODE_ENV === 'production') {

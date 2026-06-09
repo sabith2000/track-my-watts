@@ -71,13 +71,20 @@ const ActiveCycleCard = ({ cycle, onExport, loadingToken }) => {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                         </span>
-                        <h2 className="text-white font-bold text-lg tracking-wide">Current Active Cycle</h2>
+                        <h2 className="text-white font-bold text-lg tracking-wide">
+                            Current Active Cycle
+                        </h2>
                     </div>
+                    {cycle.rateName && (
+                        <div className="mb-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100/20 text-emerald-100 border border-emerald-400/30">🟢 Live Estimate (Rate: {cycle.rateName})</span>
+                        </div>
+                    )}
                     <p className="text-slate-300 text-sm font-medium">Since {formatDate(cycle.startDate)}</p>
                 </div>
                 
                 {/* Export Buttons */}
-                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                     <button 
                         onClick={(e) => onExport(e, cycle._id, 'pdf')} 
                         disabled={loadingToken !== null}
@@ -166,6 +173,7 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                     <div className="flex items-center justify-between sm:justify-start gap-2">
                         <span className="text-sm font-bold text-slate-800">
                             {formatDate(cycle.startDate)} <span className="text-gray-400 mx-1">➔</span> {formatDate(cycle.endDate)}
+                            {cycle.rateName && <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">🔒 Finalized (Rate: {cycle.rateName})</span>}
                         </span>
                         {/* Mobile Chevron */}
                         <div className={`text-gray-400 sm:hidden transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
@@ -275,6 +283,31 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                             {cycle.notes && (
                                 <div className="p-3 bg-yellow-50 text-yellow-800 text-xs border-t border-yellow-100 italic">
                                     <span className="font-bold">Note:</span> {cycle.notes}
+                                </div>
+                            )}
+                            
+                            {/* NEW: Tariff Snapshot */}
+                            {cycle.appliedSlabRateSnapshot && (
+                                <div className="p-4 bg-slate-50 border-t border-gray-200">
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Tariff Applied: <span className="text-indigo-600">{cycle.appliedSlabRateSnapshot.configName}</span></h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-700 mb-1">Standard (≤ 500 units)</p>
+                                            <ul className="text-xs text-slate-600 space-y-1 pl-2 border-l-2 border-indigo-200">
+                                                {cycle.appliedSlabRateSnapshot.slabsLessThanOrEqual500.map((s, i) => (
+                                                    <li key={i}>{s.fromUnit} - {s.toUnit === 999999 ? 'Above' : s.toUnit} units: <span className="font-medium text-slate-800">₹{s.rate}/unit</span></li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-700 mb-1">High Usage ({'>'} 500 units)</p>
+                                            <ul className="text-xs text-slate-600 space-y-1 pl-2 border-l-2 border-rose-200">
+                                                {cycle.appliedSlabRateSnapshot.slabsGreaterThan500.map((s, i) => (
+                                                    <li key={i}>{s.fromUnit} - {s.toUnit === 999999 ? 'Above' : s.toUnit} units: <span className="font-medium text-slate-800">₹{s.rate}/unit</span></li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>

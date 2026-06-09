@@ -3,35 +3,20 @@ const BillingCycle = require('../models/BillingCycle');
 const Reading = require('../models/Reading');
 const SlabRateConfig = require('../models/SlabRateConfig');
 const Meter = require('../models/Meter'); // Import Meter model to get names
-
-// Helper to calculate cost
-function calculateCostForConsumption(consumedUnits, slabConfig) {
-    if (!slabConfig || consumedUnits <= 0) { return 0; }
-    let totalCost = 0;
-    
-    const applicableSlabs = consumedUnits <= 500 ? slabConfig.slabsLessThanOrEqual500 : slabConfig.slabsGreaterThan500;
-    const sortedSlabs = [...applicableSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
-    
-    let billedUnitsInPreviousTiers = 0;
-    
-    for (const slab of sortedSlabs) {
-        if (consumedUnits > (slab.fromUnit - 1)) {
-            const unitsInThisSlab = Math.min(consumedUnits, slab.toUnit) - Math.max(billedUnitsInPreviousTiers, slab.fromUnit - 1);
-            if (unitsInThisSlab > 0) {
-                totalCost += unitsInThisSlab * slab.rate;
-                billedUnitsInPreviousTiers += unitsInThisSlab;
-            }
-        }
-        if (billedUnitsInPreviousTiers >= consumedUnits) break;
-    }
-    return parseFloat(totalCost.toFixed(2));
-}
+const { calculateCostForConsumption } = require('../utils/costCalculator');
 
 // @desc    Start a new billing cycle
 exports.startNewBillingCycle = async (req, res) => {
   try {
-    const { startDate, notes } = req.body;
+    let { startDate, notes } = req.body;
     if (!startDate) return res.status(400).json({ message: 'Start date is required.' });
+
+    // Sanitization
+    const parsedDate = new Date(startDate);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid start date format.' });
+    }
+    const cleanNotes = notes ? String(notes).trim() : '';
 
     const existingActiveCycle = await BillingCycle.findOne({ status: 'active' });
     if (existingActiveCycle) {
@@ -40,7 +25,7 @@ exports.startNewBillingCycle = async (req, res) => {
       });
     }
 
-    const newCycle = new BillingCycle({ startDate, notes, status: 'active' });
+    const newCycle = new BillingCycle({ startDate: parsedDate, notes: cleanNotes, status: 'active' });
     const savedCycle = await newCycle.save();
     res.status(201).json(savedCycle);
   } catch (error) {
@@ -52,27 +37,83 @@ exports.startNewBillingCycle = async (req, res) => {
 // @desc    Close the current active billing cycle
 exports.closeCurrentBillingCycle = async (req, res) => {
   try {
-    const { governmentCollectionDate, notesForClosedCycle, notesForNewCycle } = req.body;
+    let { governmentCollectionDate, notesForClosedCycle, notesForNewCycle } = req.body;
     if (!governmentCollectionDate) return res.status(400).json({ message: 'Government collection date is required.' });
 
+    // Sanitization
     const collectionDate = new Date(governmentCollectionDate);
+    if (isNaN(collectionDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid government collection date format.' });
+    }
+
     const currentActiveCycle = await BillingCycle.findOne({ status: 'active' });
 
     if (!currentActiveCycle) return res.status(404).json({ message: 'No active billing cycle found.' });
     if (collectionDate < currentActiveCycle.startDate) return res.status(400).json({ message: 'Collection date cannot be before start date.' });
 
-    // Close current
+    // --- IMMUTABLE SNAPSHOT LOGIC ---
+    const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
+    const readings = await Reading.find({ billingCycle: currentActiveCycle._id });
+    const meters = await Meter.find().lean();
+    const meterMap = meters.reduce((acc, m) => { acc[m._id] = m; return acc; }, {});
+
+    // Group consumption by meter
+    const meterConsumptionMap = {};
+    readings.forEach(r => {
+        const mId = r.meter.toString();
+        const units = Number(r.unitsConsumedSincePrevious) || 0;
+        meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + units;
+    });
+
+    let finalTotalUnits = 0;
+    let finalTotalCost = 0;
+    const finalMeterDetails = [];
+
+    // Calculate per meter
+    Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
+        finalTotalUnits += units;
+        const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
+        finalTotalCost += cost;
+
+        const meterInfo = meterMap[mId] || { name: 'Unknown Meter', meterType: 'N/A' };
+        finalMeterDetails.push({
+            meterName: meterInfo.name,
+            meterType: meterInfo.meterType,
+            units: parseFloat(units.toFixed(2)),
+            cost: parseFloat(cost.toFixed(2))
+        });
+    });
+
+    let appliedSlabRateSnapshot = null;
+    if (activeSlabConfig) {
+        appliedSlabRateSnapshot = {
+            configName: activeSlabConfig.configName,
+            effectiveDate: activeSlabConfig.effectiveDate,
+            slabsLessThanOrEqual500: activeSlabConfig.slabsLessThanOrEqual500.map(s => ({ fromUnit: s.fromUnit, toUnit: s.toUnit, rate: s.rate })),
+            slabsGreaterThan500: activeSlabConfig.slabsGreaterThan500.map(s => ({ fromUnit: s.fromUnit, toUnit: s.toUnit, rate: s.rate }))
+        };
+    }
+
+    // Close current cycle with snapshot data
     currentActiveCycle.endDate = collectionDate;
     currentActiveCycle.governmentCollectionDate = collectionDate;
     currentActiveCycle.status = 'closed';
-    if (notesForClosedCycle) currentActiveCycle.notes = notesForClosedCycle;
+    if (notesForClosedCycle) currentActiveCycle.notes = String(notesForClosedCycle).trim();
+    
+    currentActiveCycle.finalTotalUnits = parseFloat(finalTotalUnits.toFixed(2));
+    currentActiveCycle.finalTotalCost = parseFloat(finalTotalCost.toFixed(2));
+    currentActiveCycle.finalMeterDetails = finalMeterDetails;
+    if (appliedSlabRateSnapshot) {
+        currentActiveCycle.appliedSlabRateSnapshot = appliedSlabRateSnapshot;
+    }
+    
     await currentActiveCycle.save();
 
-    // Start new
+    // Start new cycle
     const newCycle = new BillingCycle({
       startDate: collectionDate,
       status: 'active',
-      notes: notesForNewCycle || 'New cycle started automatically.'
+      notes: notesForNewCycle ? String(notesForNewCycle).trim() : 'New cycle started automatically.'
     });
     const savedNewCycle = await newCycle.save();
 
@@ -108,18 +149,31 @@ exports.getAllBillingCycles = async (req, res) => {
 
     // 3. Enhance each cycle
     const enrichedCycles = await Promise.all(cycles.map(async (cycle) => {
+        // --- HYBRID LOGIC FOR SNAPSHOTS ---
+        if (cycle.status === 'closed' && cycle.finalTotalCost !== undefined && cycle.finalTotalCost >= 0) {
+            // Use snapshot data
+            return {
+                ...cycle,
+                totalUnits: cycle.finalTotalUnits,
+                totalCost: cycle.finalTotalCost,
+                meterDetails: cycle.finalMeterDetails,
+                rateName: cycle.appliedSlabRateSnapshot?.configName || 'Unknown Rate'
+            };
+        }
+
+        // Active cycle or legacy closed cycle without snapshot: Calculate dynamically
         const readings = await Reading.find({ billingCycle: cycle._id });
 
         // Group consumption by meter
         const meterConsumptionMap = {};
         readings.forEach(r => {
             const mId = r.meter.toString();
-            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + r.unitsConsumedSincePrevious;
+            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + (Number(r.unitsConsumedSincePrevious) || 0);
         });
 
         let totalUnits = 0;
         let totalCost = 0;
-        const meterDetails = []; // --- NEW: To hold detailed breakdown ---
+        const meterDetails = [];
 
         // Calculate per meter
         Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
@@ -141,7 +195,14 @@ exports.getAllBillingCycles = async (req, res) => {
             ...cycle,
             totalUnits: parseFloat(totalUnits.toFixed(2)),
             totalCost: parseFloat(totalCost.toFixed(2)),
-            meterDetails // --- NEW: Sending this array to frontend ---
+            meterDetails,
+            rateName: activeSlabConfig?.configName || 'Unknown Rate',
+            appliedSlabRateSnapshot: activeSlabConfig ? {
+                configName: activeSlabConfig.configName,
+                effectiveDate: activeSlabConfig.effectiveDate,
+                slabsLessThanOrEqual500: activeSlabConfig.slabsLessThanOrEqual500,
+                slabsGreaterThan500: activeSlabConfig.slabsGreaterThan500
+            } : null
         };
     }));
 
@@ -195,16 +256,8 @@ exports.deleteBillingCycle = async (req, res) => {
   }
 };
 
-// ... (Keep existing code above) ...
-
 // @desc    Get COMPLETE data for Export (Summary + Raw Readings + Stats)
 // @route   GET /api/billing-cycles/:id/export-data
-// server/controllers/billingCycleController.js (Partial Update)
-
-// server/controllers/billingCycleController.js (Update this function only)
-
-// server/controllers/billingCycleController.js (Update this function only)
-
 exports.getExportDataForCycle = async (req, res) => {
     try {
         const cycleId = req.params.id;
@@ -221,38 +274,50 @@ exports.getExportDataForCycle = async (req, res) => {
                                       .sort({ date: 1 })
                                       .lean();
 
-        // 3. Calculate Summary & Consumption
-        const meterConsumptionMap = {};
+        // 3. Check for Snapshot Data
         let totalUnits = 0;
         let totalCost = 0;
+        let meterDetails = [];
+        let rateName = 'Unknown Rate';
 
-        // Group consumption by meter
-        readings.forEach(r => {
-            const mId = r.meter?._id?.toString() || 'unknown';
-            // SAFEGUARD: Ensure units is a number
-            const units = Number(r.unitsConsumedSincePrevious) || 0; 
-            meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + units;
-        });
-
-        // Generate Meter Details Array
-        const meterDetails = [];
-        Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
-            totalUnits += units;
-            const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
-            totalCost += cost;
-
-            // Find meter metadata
-            const readingWithMeter = readings.find(r => (r.meter?._id?.toString() || 'unknown') === mId);
-            const meterName = readingWithMeter?.meter?.name || 'Unknown Meter';
-            const meterType = readingWithMeter?.meter?.meterType || 'N/A';
-
-            meterDetails.push({ 
-                meterName, 
-                meterType, 
-                units: parseFloat(units.toFixed(2)), 
-                cost: parseFloat(cost.toFixed(2)) 
+        if (cycle.status === 'closed' && cycle.finalTotalCost !== undefined && cycle.finalTotalCost >= 0) {
+            totalUnits = cycle.finalTotalUnits;
+            totalCost = cycle.finalTotalCost;
+            meterDetails = cycle.finalMeterDetails;
+            rateName = cycle.appliedSlabRateSnapshot?.configName || 'Unknown Rate';
+        } else {
+            // Dynamic Calculation
+            const meterConsumptionMap = {};
+            readings.forEach(r => {
+                const mId = r.meter?._id?.toString() || 'unknown';
+                const units = Number(r.unitsConsumedSincePrevious) || 0; 
+                meterConsumptionMap[mId] = (meterConsumptionMap[mId] || 0) + units;
             });
-        });
+
+            Object.entries(meterConsumptionMap).forEach(([mId, units]) => {
+                totalUnits += units;
+                const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
+                totalCost += cost;
+
+                const readingWithMeter = readings.find(r => (r.meter?._id?.toString() || 'unknown') === mId);
+                const meterName = readingWithMeter?.meter?.name || 'Unknown Meter';
+                const meterType = readingWithMeter?.meter?.meterType || 'N/A';
+
+                meterDetails.push({ 
+                    meterName, 
+                    meterType, 
+                    units: parseFloat(units.toFixed(2)), 
+                    cost: parseFloat(cost.toFixed(2)) 
+                });
+            });
+            rateName = activeSlabConfig?.configName || 'Unknown Rate';
+            cycle.appliedSlabRateSnapshot = activeSlabConfig ? {
+                configName: activeSlabConfig.configName,
+                effectiveDate: activeSlabConfig.effectiveDate,
+                slabsLessThanOrEqual500: activeSlabConfig.slabsLessThanOrEqual500,
+                slabsGreaterThan500: activeSlabConfig.slabsGreaterThan500
+            } : null;
+        }
 
         // 4. Calculate Analytics (Peak Usage)
         const dailyUsage = {};
@@ -264,7 +329,7 @@ exports.getExportDataForCycle = async (req, res) => {
             }
         });
 
-        let peakDay = cycle.startDate; // Default
+        let peakDay = cycle.startDate;
         let peakUsage = 0;
 
         Object.entries(dailyUsage).forEach(([date, usage]) => {
@@ -286,19 +351,19 @@ exports.getExportDataForCycle = async (req, res) => {
             daysInCycle
         };
 
-        // 5. Send Package (FIXED MAPPING)
+        // 5. Send Package
         res.status(200).json({
             cycle: { 
                 ...cycle, 
                 totalUnits: parseFloat(totalUnits.toFixed(2)), 
                 totalCost: parseFloat(totalCost.toFixed(2)), 
-                meterDetails 
+                meterDetails,
+                rateName
             },
             readings: readings.map(r => ({
                 date: r.date,
                 meterName: r.meter?.name || 'Unknown',
                 meterType: r.meter?.meterType || 'N/A',
-                // --- FIX: Use correct field name from Schema ---
                 readingValue: r.readingValue, 
                 unitsConsumed: r.unitsConsumedSincePrevious || 0
             })),

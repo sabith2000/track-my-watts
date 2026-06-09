@@ -30,6 +30,10 @@ const meterSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  colorTheme: { // e.g., 'blue', 'emerald', 'orange', 'purple', 'rose'
+    type: String,
+    default: 'emerald'
+  },
   createdAt: {
     type: Date,
     default: Date.now

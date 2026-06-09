@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import apiClient from '../services/api';
+import SlabRuleInputs from './SlabRuleInputs';
 
 const getCurrentDateString = () => {
   const now = new Date();
@@ -17,28 +18,6 @@ const generateSlabRuleId = () => {
   return `slabRule-${Date.now()}-${slabRuleIdCounter}`;
 };
 
-const SlabRuleInputs = ({ slab, index, onChange, onRemove, category }) => {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 items-center mb-2 p-2 border rounded-md bg-white sm:bg-transparent">
-      <div className="sm:col-span-2">
-        <label className="text-xs text-gray-600">From Unit</label>
-        <input type="number" value={slab.fromUnit} onChange={(e) => onChange(index, 'fromUnit', e.target.value, category)} placeholder="e.g., 1" min="0" step="1" className="mt-1 w-full p-1.5 border border-gray-300 rounded-md text-sm" required />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="text-xs text-gray-600">To Unit</label>
-        <input type="number" value={slab.toUnit} onChange={(e) => onChange(index, 'toUnit', e.target.value, category)} placeholder="e.g., 100" min="0" step="1" className="mt-1 w-full p-1.5 border border-gray-300 rounded-md text-sm" required />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="text-xs text-gray-600">Rate (₹)</label>
-        <input type="number" value={slab.rate} onChange={(e) => onChange(index, 'rate', e.target.value, category)} placeholder="e.g., 2.35" min="0" step="0.01" className="mt-1 w-full p-1.5 border border-gray-300 rounded-md text-sm" required />
-      </div>
-      <div className="sm:col-span-1 flex items-end justify-end sm:justify-center pt-2 sm:pt-0">
-        <button type="button" onClick={() => onRemove(index, category)} className="text-red-500 hover:text-red-700 text-sm p-1.5">Remove</button>
-      </div>
-    </div>
-  );
-};
-
 const SlabRateManager = ({ 
   slabConfigs, 
   selectedConfigId, 
@@ -47,15 +26,22 @@ const SlabRateManager = ({
   onRefresh, 
   isUpdating 
 }) => {
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState(null);
+  
   const [newConfigName, setNewConfigName] = useState('');
   const [newEffectiveDate, setNewEffectiveDate] = useState(getCurrentDateString());
   const [newLte500Slabs, setNewLte500Slabs] = useState([{ id: generateSlabRuleId(), fromUnit: '', toUnit: '', rate: '' }]);
   const [newGt500Slabs, setNewGt500Slabs] = useState([{ id: generateSlabRuleId(), fromUnit: '', toUnit: '', rate: '' }]);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Modal State for Delete
   const [deleteConfig, setDeleteConfig] = useState(null);
+  const [expandedConfigIds, setExpandedConfigIds] = useState([]);
+
+  const toggleExpand = (id) => {
+    setExpandedConfigIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
   // Helper logic
   const handleSlabRuleChange = (index, field, value, slabCategory) => {
@@ -73,13 +59,36 @@ const SlabRateManager = ({
     setter(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   };
 
-  const handleAddNewSlabConfig = async (e) => {
+  const openAddForm = () => {
+    setEditingConfigId(null);
+    setNewConfigName('');
+    setNewEffectiveDate(getCurrentDateString());
+    setNewLte500Slabs([{ id: generateSlabRuleId(), fromUnit: '', toUnit: '', rate: '' }]);
+    setNewGt500Slabs([{ id: generateSlabRuleId(), fromUnit: '', toUnit: '', rate: '' }]);
+    setShowForm(true);
+  };
+
+  const openEditForm = (config) => {
+    setEditingConfigId(config._id);
+    setNewConfigName(config.configName);
+    setNewEffectiveDate(config.effectiveDate ? new Date(config.effectiveDate).toISOString().split('T')[0] : getCurrentDateString());
+    
+    // Add IDs for React keys
+    setNewLte500Slabs(config.slabsLessThanOrEqual500.map(s => ({ ...s, id: generateSlabRuleId() })));
+    setNewGt500Slabs(config.slabsGreaterThan500.map(s => ({ ...s, id: generateSlabRuleId() })));
+    
+    setShowForm(true);
+    // Scroll to top where form is
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveSlabConfig = async (e) => {
     e.preventDefault();
-    setIsAdding(true);
+    setIsSaving(true);
     const validate = (arr) => arr.every(s => s.fromUnit !== '' && s.toUnit !== '' && s.rate !== '' && parseFloat(s.fromUnit) >= 0);
     if (!newConfigName.trim() || !validate(newLte500Slabs) || !validate(newGt500Slabs)) {
       toast.error("Please fill all fields correctly.");
-      setIsAdding(false);
+      setIsSaving(false);
       return;
     }
 
@@ -89,18 +98,24 @@ const SlabRateManager = ({
       effectiveDate: new Date(newEffectiveDate).toISOString(),
       slabsLessThanOrEqual500: parseSlabs(newLte500Slabs), 
       slabsGreaterThan500: parseSlabs(newGt500Slabs),
-      isCurrentlyActive: false,
     };
 
     try {
-      await apiClient.post('/slabs', payload);
-      toast.success("Slab configuration added!");
-      setShowAddForm(false);
+      if (editingConfigId) {
+        await apiClient.put(`/slabs/${editingConfigId}`, payload);
+        toast.success("Slab configuration updated!");
+      } else {
+        payload.isCurrentlyActive = false;
+        await apiClient.post('/slabs', payload);
+        toast.success("Slab configuration added!");
+      }
+      setShowForm(false);
+      setEditingConfigId(null);
       onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add configuration.');
+      toast.error(err.response?.data?.message || `Failed to ${editingConfigId ? 'update' : 'add'} configuration.`);
     } finally {
-      setIsAdding(false);
+      setIsSaving(false);
     }
   };
 
@@ -129,16 +144,18 @@ const SlabRateManager = ({
             <p className="text-sm text-gray-500">Manage electricity tariff structures.</p>
         </div>
         <button 
-            onClick={() => setShowAddForm(!showAddForm)}
-            className={`w-full sm:w-auto flex-shrink-0 px-4 py-2 text-sm font-medium rounded-md shadow whitespace-nowrap transition-colors ${showAddForm ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+            onClick={() => showForm ? setShowForm(false) : openAddForm()}
+            className={`w-full sm:w-auto flex-shrink-0 px-4 py-2 text-sm font-medium rounded-md shadow whitespace-nowrap transition-colors ${showForm ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
         >
-            {showAddForm ? 'Cancel Adding Slab' : '+ Add New Slab Configuration'}
+            {showForm ? 'Cancel' : '+ Add New Slab Configuration'}
         </button>
       </div>
 
-      {showAddForm && (
-        <form onSubmit={handleAddNewSlabConfig} className="my-6 p-4 border border-dashed border-gray-300 rounded-lg space-y-6 bg-slate-50">
-           <h3 className="text-lg sm:text-xl font-semibold text-slate-600 border-b pb-2">New Slab Configuration Details</h3>
+      {showForm && (
+        <form onSubmit={handleSaveSlabConfig} className="my-6 p-4 border border-dashed border-gray-300 rounded-lg space-y-6 bg-slate-50">
+           <h3 className="text-lg sm:text-xl font-semibold text-slate-600 border-b pb-2">
+             {editingConfigId ? 'Edit Slab Configuration Details' : 'New Slab Configuration Details'}
+           </h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
@@ -160,18 +177,25 @@ const SlabRateManager = ({
              <button type="button" onClick={() => addSlabRule('gt500')} className="mt-1 text-sm text-blue-600 hover:text-blue-800">+ Add Rule for &gt; 500</button>
            </div>
            <div className="pt-4 flex justify-end">
-             <button type="submit" disabled={isAdding} className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow disabled:opacity-50">
-                {isAdding ? 'Saving...' : 'Save New Configuration'}
+             <button type="submit" disabled={isSaving} className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow disabled:opacity-50">
+                {isSaving ? 'Saving...' : (editingConfigId ? 'Update Configuration' : 'Save New Configuration')}
              </button>
            </div>
         </form>
       )}
 
       {/* List of Existing Slabs */}
-      {slabConfigs.length > 0 && !showAddForm ? (
+      {slabConfigs.length > 0 && !showForm ? (
         <div className="space-y-3 mt-6 border-t pt-6">
             <h3 className="text-base sm:text-lg font-semibold text-slate-600 mb-2">Activate Existing Configuration</h3>
-            {slabConfigs.map(config => (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 mb-4 rounded-r-md">
+                <p className="text-sm text-amber-800">
+                    <span className="font-bold">⚠️ Note:</span> Changing the active rate will instantly update the estimated bill for the current active billing cycle. Locked historical bills from closed cycles will remain permanently unaffected.
+                </p>
+            </div>
+            {slabConfigs.map(config => {
+                const isExpanded = expandedConfigIds.includes(config._id);
+                return (
                 <div key={config._id} className={`p-3 border rounded-md transition-all duration-200 hover:shadow-md ${selectedConfigId === config._id ? 'bg-indigo-50 border-indigo-300' : 'hover:bg-gray-50'}`}>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         <label className="flex items-center cursor-pointer flex-grow mr-2">
@@ -188,22 +212,62 @@ const SlabRateManager = ({
                                 <span className="block text-xs sm:text-sm text-gray-500">Effective Date: {formatDate(config.effectiveDate)}</span>
                             </div>
                         </label>
-                        <div className="flex items-center self-end sm:self-center w-full sm:w-auto mt-2 sm:mt-0">
+                        <div className="flex items-center self-end sm:self-center w-full sm:w-auto mt-2 sm:mt-0 gap-2">
+                            <button onClick={() => toggleExpand(config._id)} className="px-3 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors whitespace-nowrap">
+                                {isExpanded ? 'Hide Details' : 'View Details'}
+                            </button>
+                            <button 
+                                onClick={() => openEditForm(config)} 
+                                className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded-md transition-colors whitespace-nowrap"
+                            >
+                                Edit
+                            </button>
                             {config.isCurrentlyActive && (
                                 <span className="text-xs font-semibold py-0.5 px-2 bg-green-200 text-green-800 rounded-full whitespace-nowrap ml-auto">Currently Active</span>
                             )}
                             {!config.isCurrentlyActive && (
                                 <button 
                                     onClick={() => setDeleteConfig(config)} 
-                                    className="ml-auto px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-md transition-colors whitespace-nowrap"
+                                    className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-md transition-colors whitespace-nowrap ml-auto"
                                 >
                                     Delete
                                 </button>
                             )}
                         </div>
                     </div>
+                    {isExpanded && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Slabs for ≤ 500 Units</h4>
+                                <table className="min-w-full text-xs sm:text-sm text-left bg-white border rounded">
+                                    <thead className="bg-gray-50 text-gray-600">
+                                        <tr><th className="px-2 py-1">From</th><th className="px-2 py-1">To</th><th className="px-2 py-1">Rate (₹)</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {config.slabsLessThanOrEqual500.map((s, i) => (
+                                            <tr key={i}><td className="px-2 py-1">{s.fromUnit}</td><td className="px-2 py-1">{s.toUnit === 999999 ? '∞' : s.toUnit}</td><td className="px-2 py-1 font-medium">{s.rate}</td></tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Slabs for &gt; 500 Units</h4>
+                                <table className="min-w-full text-xs sm:text-sm text-left bg-white border rounded">
+                                    <thead className="bg-gray-50 text-gray-600">
+                                        <tr><th className="px-2 py-1">From</th><th className="px-2 py-1">To</th><th className="px-2 py-1">Rate (₹)</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {config.slabsGreaterThan500.map((s, i) => (
+                                            <tr key={i}><td className="px-2 py-1">{s.fromUnit}</td><td className="px-2 py-1">{s.toUnit === 999999 ? '∞' : s.toUnit}</td><td className="px-2 py-1 font-medium">{s.rate}</td></tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            ))}
+                );
+            })}
             <div className="mt-6">
                 <button 
                     onClick={onSaveActive} 
@@ -214,7 +278,7 @@ const SlabRateManager = ({
                 </button>
             </div>
         </div>
-      ) : !showAddForm && (
+      ) : !showForm && (
         <p className="text-gray-600 mt-4 text-center">No slab rate configurations found.</p>
       )}
 

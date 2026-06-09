@@ -6,7 +6,7 @@ const SlabRateConfig = require('../models/SlabRateConfig');
 // @access  Public (for now, will add auth later if needed)
 exports.addSlabRateConfig = async (req, res) => {
     try {
-        const {
+        let {
             configName,
             effectiveDate,
             isCurrentlyActive,
@@ -14,9 +14,19 @@ exports.addSlabRateConfig = async (req, res) => {
             slabsGreaterThan500
         } = req.body;
 
+        configName = configName ? String(configName).trim() : '';
+
         // Basic validation
         if (!configName || !slabsLessThanOrEqual500 || !slabsGreaterThan500) {
             return res.status(400).json({ message: 'Config name and both slab categories are required.' });
+        }
+        
+        if (!Array.isArray(slabsLessThanOrEqual500) || slabsLessThanOrEqual500.length === 0) {
+            return res.status(400).json({ message: 'slabsLessThanOrEqual500 must be a non-empty array.' });
+        }
+        
+        if (!Array.isArray(slabsGreaterThan500) || slabsGreaterThan500.length === 0) {
+            return res.status(400).json({ message: 'slabsGreaterThan500 must be a non-empty array.' });
         }
 
         // If this new config is set to active, deactivate others
@@ -101,6 +111,61 @@ exports.setActiveSlabRateConfig = async (req, res) => {
 };
 
 // ... (keep existing functions: addSlabRateConfig, getSlabRateConfigs, getActiveSlabRateConfig, setActiveSlabRateConfig)
+
+// @desc    Update a slab rate configuration
+// @route   PUT /api/slabs/:id
+// @access  Public
+exports.updateSlabRateConfig = async (req, res) => {
+    try {
+        const configId = req.params.id;
+        let {
+            configName,
+            effectiveDate,
+            slabsLessThanOrEqual500,
+            slabsGreaterThan500
+        } = req.body;
+
+        configName = configName ? String(configName).trim() : '';
+
+        // Basic validation
+        if (!configName || !slabsLessThanOrEqual500 || !slabsGreaterThan500) {
+            return res.status(400).json({ message: 'Config name and both slab categories are required.' });
+        }
+        
+        if (!Array.isArray(slabsLessThanOrEqual500) || slabsLessThanOrEqual500.length === 0) {
+            return res.status(400).json({ message: 'slabsLessThanOrEqual500 must be a non-empty array.' });
+        }
+        
+        if (!Array.isArray(slabsGreaterThan500) || slabsGreaterThan500.length === 0) {
+            return res.status(400).json({ message: 'slabsGreaterThan500 must be a non-empty array.' });
+        }
+
+        const updatedConfig = await SlabRateConfig.findByIdAndUpdate(
+            configId,
+            {
+                $set: {
+                    configName,
+                    effectiveDate,
+                    slabsLessThanOrEqual500,
+                    slabsGreaterThan500
+                }
+            },
+            { new: true, runValidators: true } // Return updated and run validators
+        );
+
+        if (!updatedConfig) {
+            return res.status(404).json({ message: 'Slab rate configuration not found.' });
+        }
+
+        res.status(200).json(updatedConfig);
+    } catch (error) {
+        console.error('Error updating slab rate config:', error);
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Configuration name already exists.' });
+        }
+        res.status(500).json({ message: 'Server error while updating slab rate configuration.' });
+    }
+};
 
 // @desc    Delete a slab rate configuration
 // @route   DELETE /api/slabs/:id

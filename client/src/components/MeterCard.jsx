@@ -79,8 +79,20 @@ const MeterCard = ({ meter, onQuickAdd }) => {
     meter.averageDailyConsumption
   );
 
+  const getThemeClasses = (colorTheme) => {
+    switch(colorTheme) {
+      case 'blue': return { border: 'border-blue-500', text: 'text-blue-700' };
+      case 'orange': return { border: 'border-orange-500', text: 'text-orange-700' };
+      case 'purple': return { border: 'border-purple-500', text: 'text-purple-700' };
+      case 'rose': return { border: 'border-rose-500', text: 'text-rose-700' };
+      default: return { border: 'border-emerald-500', text: 'text-emerald-700' };
+    }
+  };
+
+  const theme = getThemeClasses(meter.colorTheme);
+
   return (
-    <div className={`bg-white shadow-lg rounded-lg p-6 border-l-8 transition-all duration-300 hover:shadow-xl relative ${meter.isCurrentlyActiveGeneral ? 'border-green-500' : 'border-slate-300'}`}>
+    <div className={`bg-white shadow-lg rounded-lg p-6 border-l-8 transition-all duration-300 hover:shadow-xl relative ${meter.isCurrentlyActiveGeneral ? theme.border : 'border-slate-300'}`}>
       
       {/* Quick Add Button */}
       <button 
@@ -94,7 +106,7 @@ const MeterCard = ({ meter, onQuickAdd }) => {
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4 pr-12">
         <div>
-          <h3 className="text-xl font-bold text-indigo-700">{meter.meterName}</h3>
+          <h3 className={`text-xl font-bold ${theme.text}`}>{meter.meterName}</h3>
           <p className="text-sm text-gray-500">{meter.meterType}</p>
           {meter.isGeneralPurpose && (
             <span className={`mt-1 text-xs font-semibold py-1 px-3 rounded-full ${meter.isCurrentlyActiveGeneral ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>

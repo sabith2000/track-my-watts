@@ -3,33 +3,7 @@ const Reading = require('../models/Reading');
 const BillingCycle = require('../models/BillingCycle');
 const SlabRateConfig = require('../models/SlabRateConfig');
 const mongoose = require('mongoose');
-
-// Helper to calculate cost based on the user's specific logic
-function calculateCostForConsumption(consumedUnits, slabConfig) {
-    if (!slabConfig || consumedUnits <= 0) { return 0; }
-    let totalCost = 0;
-    
-    // Choose the correct slab set based on total consumption
-    const applicableSlabs = consumedUnits <= 500 ? slabConfig.slabsLessThanOrEqual500 : slabConfig.slabsGreaterThan500;
-    
-    // Sort slabs by 'fromUnit' to ensure correct order
-    const sortedSlabs = [...applicableSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
-    
-    let billedUnitsInPreviousTiers = 0;
-    
-    for (const slab of sortedSlabs) {
-        if (consumedUnits > (slab.fromUnit - 1)) {
-            const unitsInThisSlab = Math.min(consumedUnits, slab.toUnit) - Math.max(billedUnitsInPreviousTiers, slab.fromUnit - 1);
-            
-            if (unitsInThisSlab > 0) {
-                totalCost += unitsInThisSlab * slab.rate;
-                billedUnitsInPreviousTiers += unitsInThisSlab;
-            }
-        }
-        if (billedUnitsInPreviousTiers >= consumedUnits) break;
-    }
-    return parseFloat(totalCost.toFixed(2));
-}
+const { calculateCostForConsumption } = require('../utils/costCalculator');
 
 // Helper to format date
 const formatDate = (dateString) => {
@@ -43,9 +17,36 @@ exports.getCycleSummary = async (req, res) => {
     try {
         const activeSlabConfig = await SlabRateConfig.findOne({ isCurrentlyActive: true });
 
-        // 1. Get raw consumption grouped by Cycle AND Meter
-        // We need to calculate cost for EACH meter individually first
+        // 1. Fetch all cycles first to check for snapshots
+        const cycles = await BillingCycle.find().lean();
+        const cycleSnapshotMap = {};
+        const cycleDetailsMap = {};
+        
+        cycles.forEach(cycle => {
+            cycleDetailsMap[cycle._id.toString()] = {
+                startDate: cycle.startDate,
+                endDate: cycle.endDate,
+                status: cycle.status
+            };
+            
+            if (cycle.status === 'closed' && cycle.finalTotalCost !== undefined && cycle.finalTotalCost >= 0) {
+                cycleSnapshotMap[cycle._id.toString()] = {
+                    id: cycle._id.toString(),
+                    startDate: new Date(cycle.startDate),
+                    endDate: new Date(cycle.endDate),
+                    status: cycle.status,
+                    totalConsumption: cycle.finalTotalUnits,
+                    totalCost: cycle.finalTotalCost
+                };
+            }
+        });
+
+        // 2. Get raw consumption for active/legacy cycles
+        // Filter out cycles that have snapshots
+        const cyclesWithSnapshots = Object.keys(cycleSnapshotMap).map(id => new mongoose.Types.ObjectId(id));
+        
         const rawMeterData = await Reading.aggregate([
+            { $match: { billingCycle: { $nin: cyclesWithSnapshots } } },
             { $lookup: { from: 'billingcycles', localField: 'billingCycle', foreignField: '_id', as: 'cycleInfo' } },
             { $unwind: '$cycleInfo' },
             { 
@@ -59,34 +60,53 @@ exports.getCycleSummary = async (req, res) => {
             }
         ]);
 
-        // 2. Process data in JavaScript to calculate costs and re-group by Cycle
+        // 3. Process dynamic data
         const cycleMap = {};
 
         rawMeterData.forEach(item => {
             const cycleId = item._id.cycle.toString();
             const units = item.meterTotalUnits;
             
-            // Calculate cost for THIS specific meter's consumption
             const cost = activeSlabConfig ? calculateCostForConsumption(units, activeSlabConfig) : 0;
 
             if (!cycleMap[cycleId]) {
                 cycleMap[cycleId] = {
                     id: cycleId,
                     startDate: new Date(item.cycleStartDate),
-                    endDate: new Date(item.cycleEndDate),
+                    endDate: item.cycleEndDate ? new Date(item.cycleEndDate) : null,
                     status: item.cycleStatus,
                     totalConsumption: 0,
                     totalCost: 0
                 };
             }
 
-            // Add this meter's contribution to the cycle totals
             cycleMap[cycleId].totalConsumption += units;
             cycleMap[cycleId].totalCost += cost;
         });
 
-        // 3. Convert Map to Array and Sort
-        const analyticsData = Object.values(cycleMap)
+        // Also add cycles that have no readings but have basic cycle info
+        cycles.forEach(cycle => {
+            const id = cycle._id.toString();
+            if (!cycleSnapshotMap[id] && !cycleMap[id]) {
+                cycleMap[id] = {
+                    id: id,
+                    startDate: new Date(cycle.startDate),
+                    endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+                    status: cycle.status,
+                    totalConsumption: 0,
+                    totalCost: 0
+                };
+            }
+        });
+
+        // 4. Merge Snapshots and Dynamic Data
+        const allCyclesData = [
+            ...Object.values(cycleSnapshotMap),
+            ...Object.values(cycleMap)
+        ];
+
+        // 5. Sort and format
+        const analyticsData = allCyclesData
             .sort((a, b) => a.startDate - b.startDate)
             .map(cycle => {
                 let cycleLabel = `${formatDate(cycle.startDate)} - ${formatDate(cycle.endDate)}`;

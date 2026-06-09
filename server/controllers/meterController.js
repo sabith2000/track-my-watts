@@ -5,10 +5,17 @@ const Meter = require('../models/Meter');
 // @route   POST /api/meters
 exports.addMeter = async (req, res) => {
   try {
-    const { name, meterType, isGeneralPurpose, description, isCurrentlyActiveGeneral } = req.body;
+    const name = req.body.name ? String(req.body.name).trim() : '';
+    const meterType = req.body.meterType;
+    const description = req.body.description ? String(req.body.description).trim() : '';
+    const colorTheme = req.body.colorTheme ? String(req.body.colorTheme).trim() : 'emerald';
+    const isGeneralPurpose = req.body.isGeneralPurpose;
+    const isCurrentlyActiveGeneral = req.body.isCurrentlyActiveGeneral;
+    
     if (!name || !meterType) { return res.status(400).json({ message: 'Meter name and type are required.' }); }
-    if (isGeneralPurpose === undefined) { return res.status(400).json({ message: 'isGeneralPurpose field is required (true or false).' }); }
-    const newMeter = new Meter({ name, meterType, isGeneralPurpose, description, isCurrentlyActiveGeneral: isGeneralPurpose ? (isCurrentlyActiveGeneral || false) : false });
+    if (meterType !== '1-phase' && meterType !== '3-phase') { return res.status(400).json({ message: 'Meter type must be 1-phase or 3-phase.' }); }
+    if (typeof isGeneralPurpose !== 'boolean') { return res.status(400).json({ message: 'isGeneralPurpose field is required and must be a boolean (true or false).' }); }
+    const newMeter = new Meter({ name, meterType, isGeneralPurpose, description, colorTheme, isCurrentlyActiveGeneral: isGeneralPurpose ? (isCurrentlyActiveGeneral || false) : false });
     const savedMeter = await newMeter.save();
     res.status(201).json(savedMeter);
   } catch (error) {
@@ -49,8 +56,11 @@ exports.getMeterById = async (req, res) => {
 // @route   PUT /api/meters/:id
 exports.updateMeter = async (req, res) => {
     try {
-        // We only expect 'name' and 'description' for this update endpoint now
-        const { name, description } = req.body;
+        // We only expect 'name', 'description', and 'colorTheme' for this update endpoint now
+        let { name, description, colorTheme } = req.body;
+        if (name !== undefined) name = String(name).trim();
+        if (description !== undefined) description = String(description).trim();
+        if (colorTheme !== undefined) colorTheme = String(colorTheme).trim();
         
         if (!name) {
             return res.status(400).json({ message: 'Meter name is required.' });
@@ -64,6 +74,9 @@ exports.updateMeter = async (req, res) => {
         meter.name = name;
         if (description !== undefined) {
             meter.description = description;
+        }
+        if (colorTheme !== undefined) {
+            meter.colorTheme = colorTheme;
         }
 
         const updatedMeter = await meter.save();

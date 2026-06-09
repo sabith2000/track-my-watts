@@ -1,6 +1,7 @@
 // client/src/components/Layout.jsx
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import apiClient from '../services/api';
 
 // --- CONFIGURATION ---
 const NAV_ITEMS = [
@@ -27,6 +28,21 @@ const CloseIcon = () => (
 function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await apiClient.get('/system/status');
+        if (!res.data.isInitialized) {
+          navigate('/welcome');
+        }
+      } catch (err) {
+        console.error("Failed to check status", err);
+      }
+    };
+    checkStatus();
+  }, [navigate]);
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location]);
 

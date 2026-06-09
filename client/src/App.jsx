@@ -6,7 +6,8 @@ import DashboardPage from './pages/DashboardPage';
 import ReadingsPage from './pages/ReadingsPage';
 import SettingsPage from './pages/SettingsPage';
 import BillingCyclesPage from './pages/BillingCyclesPage';
-import AnalyticsPage from './pages/AnalyticsPage'; // --- NEW IMPORT ---
+import AnalyticsPage from './pages/AnalyticsPage'; 
+import WelcomeWizardPage from './pages/WelcomeWizardPage'; // --- NEW IMPORT ---
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -15,11 +16,12 @@ function App() {
   return (
     <>
       <Routes>
+        <Route path="/welcome" element={<WelcomeWizardPage />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="readings" element={<ReadingsPage />} />
           <Route path="billing-cycles" element={<BillingCyclesPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} /> {/* --- NEW ROUTE --- */}
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

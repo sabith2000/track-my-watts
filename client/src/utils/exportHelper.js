@@ -65,9 +65,10 @@ export const exportToExcel = async (cycleId) => {
         wsSummary.getCell('A2').value = `Generated: ${new Date().toLocaleString()}`;
         wsSummary.getCell('A3').value = `Period: ${formatDate(cycle.startDate)} - ${formatDate(cycle.endDate)}`;
         wsSummary.getCell('A4').value = `Status: ${cycle.status.toUpperCase()}`;
+        wsSummary.getCell('A5').value = `Rate Configuration: ${cycle.rateName || 'N/A'}`;
 
         // Header
-        const summaryHeaderRow = wsSummary.getRow(6);
+        const summaryHeaderRow = wsSummary.getRow(7);
         summaryHeaderRow.values = ['Meter Name', 'Type', 'Consumption (Units)', 'Cost (Rs.)'];
         applyHeaderStyle(summaryHeaderRow);
 
@@ -102,6 +103,20 @@ export const exportToExcel = async (cycleId) => {
         wsSummary.addRow(['ANALYTICS SNAPSHOT']).font = { bold: true, color: { argb: 'FF4F46E5' } };
         wsSummary.addRow(['Avg Daily Use', `${analytics.averageDailyConsumption} units/day`]);
         wsSummary.addRow(['Peak Usage', `${analytics.peakUsageAmount} units (${formatDate(analytics.peakUsageDay)})`]);
+
+        // Tariff Snapshot
+        if (cycle.appliedSlabRateSnapshot) {
+            wsSummary.addRow([]);
+            wsSummary.addRow(['TARIFF APPLIED']).font = { bold: true, color: { argb: 'FF4F46E5' } };
+            wsSummary.addRow(['Category', 'From Unit', 'To Unit', 'Rate (Rs/Unit)']).font = { bold: true };
+            
+            cycle.appliedSlabRateSnapshot.slabsLessThanOrEqual500.forEach(s => {
+                wsSummary.addRow(['Standard (<=500)', s.fromUnit, s.toUnit === 999999 ? 'Above' : s.toUnit, s.rate]);
+            });
+            cycle.appliedSlabRateSnapshot.slabsGreaterThan500.forEach(s => {
+                wsSummary.addRow(['High Usage (>500)', s.fromUnit, s.toUnit === 999999 ? 'Above' : s.toUnit, s.rate]);
+            });
+        }
 
         wsSummary.columns = [{ width: 25 }, { width: 20 }, { width: 22 }, { width: 20 }];
 
@@ -188,6 +203,12 @@ export const exportToPDF = async (cycleId) => {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(cycle.status === 'active' ? '008000' : '505050');
         doc.text(cycle.status.toUpperCase(), 45, startY + 6);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        doc.text("Rate Plan:", 14, startY + 12);
+        doc.setFont("helvetica", "bold");
+        doc.text(cycle.rateName || 'N/A', 45, startY + 12);
 
         // Amount Box
         doc.setFillColor(243, 244, 246);
@@ -253,6 +274,39 @@ export const exportToPDF = async (cycleId) => {
             },
             alternateRowStyles: { fillColor: [249, 250, 251] }
         });
+
+        // Tariff Snapshot Table
+        if (cycle.appliedSlabRateSnapshot) {
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("Tariff Details:", 14, finalY);
+
+            const tariffBody = [];
+            cycle.appliedSlabRateSnapshot.slabsLessThanOrEqual500.forEach(s => {
+                tariffBody.push(['Standard (<= 500)', s.fromUnit, s.toUnit === 999999 ? 'Above' : s.toUnit, `Rs. ${s.rate}`]);
+            });
+            cycle.appliedSlabRateSnapshot.slabsGreaterThan500.forEach(s => {
+                tariffBody.push(['High Usage (> 500)', s.fromUnit, s.toUnit === 999999 ? 'Above' : s.toUnit, `Rs. ${s.rate}`]);
+            });
+
+            autoTable(doc, {
+                startY: finalY + 4,
+                head: [["Category", "From Unit", "To Unit", "Rate"]],
+                body: tariffBody,
+                theme: 'grid',
+                headStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0], halign: 'center' },
+                styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+                columnStyles: {
+                    0: { halign: 'left' },
+                    1: { halign: 'center' },
+                    2: { halign: 'center' },
+                    3: { halign: 'right' }
+                },
+                margin: { left: 14, right: 14 }
+            });
+        }
 
         // 4. Footer
         doc.setFontSize(8);

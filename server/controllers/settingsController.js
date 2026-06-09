@@ -25,7 +25,13 @@ exports.getSettings = async (req, res) => {
 // @route   PUT /api/settings
 exports.updateSettings = async (req, res) => {
   try {
-    const { consumptionTarget } = req.body;
+    let { consumptionTarget } = req.body;
+    
+    const targetVal = parseInt(consumptionTarget, 10);
+    if (isNaN(targetVal) || targetVal <= 0) {
+        return res.status(400).json({ message: 'Consumption target must be a valid positive number.' });
+    }
+    consumptionTarget = targetVal;
 
     // Find the settings document and update it.
     // The { new: true, upsert: true } options mean:

@@ -4,7 +4,7 @@
 > **Location:** Project Root (`/context.md`)
 > **Purpose:** This is the **single source of truth** for any AI model (Claude, Gemini, or any other) working on this project. Read this file FIRST, in its entirety, before making any changes to the codebase.
 > **Last Updated:** June 10, 2026
-> **Current Version:** `v2.1.0`
+> **Current Version:** `v2.1.1`
 
 ---
 
@@ -37,7 +37,7 @@ This is a **personal-use application** built by and for "LMS" (the developer's i
 
 ### Live Application
 
-- **URL:** [https://trackmywatts.onrender.com](https://trackmywatts.onrender.com)
+- **URL:** [https://trackmywatts-v2.onrender.com/](https://trackmywatts-v2.onrender.com/)
 - **Hosting:** Render.com (single Web Service — server serves the built client in production)
 
 ### Key Concepts
@@ -478,7 +478,7 @@ User submits: { meterId, date, readingValue }
 6. Save Reading with computed unitsConsumedSincePrevious
 ```
 
-**⚠️ Known Limitation:** Deleting a reading breaks the consumption chain. The reading that *follows* the deleted one will still reference the old `unitsConsumedSincePrevious`. There is no automatic chain recalculation.
+**✅ Chain Recalculation:** Deleting a reading triggers an automatic recalculation of the consumption chain for all subsequent readings of that meter, preserving sequential integrity.
 
 ---
 
@@ -603,7 +603,7 @@ The Settings page allows the user to "switch" which general-purpose meter is act
 
 ## 7. STATE OF THE APPLICATION
 
-### Current Version: `v2.1.0`
+### Current Version: `v2.1.1`
 
 ### Version Tracking
 
@@ -658,6 +658,7 @@ The version is displayed in the app footer via `import.meta.env.VITE_APP_VERSION
 
 | Version | Key Changes |
 |---|---|
+| `v2.1.1` | **Documentation & URL Update**: Updated deployment URL to v2 and documented chain recalculation fix. |
 | `v2.1.0` | **Analytics Overhaul**: Added lifetime hero statistics, Overall Meter Share pie chart, and Global Excel Export functionality. |
 | `v2.0.1` | **Bug Fix & Polish**: Fixed sequential reading deletion chain-repair bug (used `createdAt` as chronological tie-breaker). Appended explicit Tariff Snapshots into both PDF and Excel cycle exports. Added `appliedSlabRateSnapshot` to UI dropdown history rows. |
 | `v2.0.0` | **Major Architecture Update**: Implemented Snapshot architecture for billing cycles, centralized cost calculation, input sanitization, automated consumption chain repair, UI enhancements (Slab Viewer, Badges), System Initialization Wizard (`/welcome`), and Meter Color Themes. |

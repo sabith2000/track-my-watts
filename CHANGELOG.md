@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-06-10
+### Changed
+- **Documentation & URL Update:** Updated documentation to reflect the new V2 Render deployment URL (`trackmywatts-v2.onrender.com`).
+- **Documentation:** Updated Context to formally document that the reading chain recalculation bug has been fixed (deleting a reading now correctly triggers chain recalculation).
+
 ## [2.1.0] - 2026-06-10
 ### Added
 - **Analytics Overhaul:** Expanded Analytics page with comprehensive lifetime hero statistics.

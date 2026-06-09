@@ -322,3 +322,85 @@ export const exportToPDF = async (cycleId) => {
         throw error;
     }
 };
+
+// --- GLOBAL ANALYTICS EXPORT ---
+export const exportLifetimeAnalyticsToExcel = async (cycleSummaryData, meterBreakdownData, summaryStats) => {
+    try {
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Track My Watts';
+        workbook.created = new Date();
+
+        // 1. SUMMARY SHEET
+        const wsSummary = workbook.addWorksheet('Summary Insights', { properties: { tabColor: { argb: 'FF10B981' } } });
+        wsSummary.mergeCells('A1:D1');
+        const titleCell = wsSummary.getCell('A1');
+        titleCell.value = 'LIFETIME ANALYTICS REPORT';
+        titleCell.font = { size: 16, bold: true, color: { argb: 'FF10B981' } };
+        titleCell.alignment = { horizontal: 'center' };
+
+        wsSummary.getCell('A2').value = `Generated: ${new Date().toLocaleString()}`;
+        wsSummary.addRow([]);
+        
+        const summaryHeader = wsSummary.addRow(['Metric', 'Value']);
+        applyHeaderStyle(summaryHeader);
+        
+        const summaryRows = [
+            ['Total Consumption (All Time)', `${summaryStats.totalConsumption.toFixed(2)} units`],
+            ['Total Cost (All Time)', `Rs. ${summaryStats.totalCost.toFixed(2)}`],
+            ['Average Cycle Cost', `Rs. ${summaryStats.avgCost.toFixed(2)}`],
+            ['Most Active Meter', `${summaryStats.highestMeter.name} (${summaryStats.highestMeter.total.toFixed(2)} units)`],
+            ['Peak Cycle', `${summaryStats.peakCycle.name}`],
+            ['Peak Cycle Cost', `Rs. ${summaryStats.peakCycle.totalCost.toFixed(2)}`]
+        ];
+
+        summaryRows.forEach(r => {
+            const row = wsSummary.addRow(r);
+            applyDataBorderStyle(row);
+        });
+        wsSummary.columns = [{ width: 35 }, { width: 35 }];
+
+        // 2. METER BREAKDOWN SHEET
+        const wsMeter = workbook.addWorksheet('Meter Breakdown');
+        const meterHeader = wsMeter.addRow(['Meter Name', 'Lifetime Consumption (Units)', 'Percentage of Total']);
+        applyHeaderStyle(meterHeader);
+        
+        summaryStats.meterPieData.forEach(m => {
+            const row = wsMeter.addRow([
+                m.name, 
+                m.value, 
+                `${((m.value / summaryStats.totalConsumption) * 100).toFixed(1)}%`
+            ]);
+            applyDataBorderStyle(row);
+            row.getCell(2).numFmt = '#,##0.00';
+            row.getCell(2).alignment = { horizontal: 'right' };
+            row.getCell(3).alignment = { horizontal: 'right' };
+        });
+        wsMeter.columns = [{ width: 25 }, { width: 30 }, { width: 25 }];
+
+        // 3. CYCLE HISTORY SHEET
+        const wsCycle = workbook.addWorksheet('Cycle History');
+        const cycleHeader = wsCycle.addRow(['Cycle Name / Date', 'Total Consumption (Units)', 'Total Cost (Rs.)']);
+        applyHeaderStyle(cycleHeader);
+
+        cycleSummaryData.forEach(c => {
+            const row = wsCycle.addRow([c.name, c.totalConsumption, c.totalCost]);
+            applyDataBorderStyle(row);
+            row.getCell(2).numFmt = '#,##0.00';
+            row.getCell(3).numFmt = '"Rs. "#,##0.00';
+            row.getCell(2).alignment = { horizontal: 'right' };
+            row.getCell(3).alignment = { horizontal: 'right' };
+        });
+        wsCycle.columns = [{ width: 35 }, { width: 25 }, { width: 25 }];
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const now = new Date();
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, ''); 
+        const dateStr = now.toISOString().split('T')[0];
+        const fileName = `TrackMyWatts_LifetimeAnalytics_${dateStr}_${timeStr}.xlsx`;
+        saveAs(new Blob([buffer]), fileName);
+        return true;
+    } catch (error) {
+        console.error("Lifetime Analytics Export Error:", error);
+        throw error;
+    }
+};

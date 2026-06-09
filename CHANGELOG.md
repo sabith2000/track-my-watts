@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-06-10
+### Added
+- **Analytics Overhaul:** Expanded Analytics page with comprehensive lifetime hero statistics.
+- **New Visualization:** Added an "Overall Meter Share" Pie Chart to track lifetime unit distribution.
+- **Global Data Export:** Added an "Export Full Report" button on the Analytics page that generates a multi-sheet Excel workbook containing lifetime summary insights, full meter breakdown, and cycle history.
+
 ## [2.0.1] - 2026-06-10
 ### Fixed
 - Fixed sequential reading deletion chain-repair bug (used `createdAt` as a chronological tie-breaker for identical dates).

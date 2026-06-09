@@ -4,7 +4,7 @@
 > **Location:** Project Root (`/context.md`)
 > **Purpose:** This is the **single source of truth** for any AI model (Claude, Gemini, or any other) working on this project. Read this file FIRST, in its entirety, before making any changes to the codebase.
 > **Last Updated:** June 10, 2026
-> **Current Version:** `v2.0.1`
+> **Current Version:** `v2.1.0`
 
 ---
 
@@ -603,7 +603,7 @@ The Settings page allows the user to "switch" which general-purpose meter is act
 
 ## 7. STATE OF THE APPLICATION
 
-### Current Version: `v2.0.1`
+### Current Version: `v2.1.0`
 
 ### Version Tracking
 
@@ -658,6 +658,7 @@ The version is displayed in the app footer via `import.meta.env.VITE_APP_VERSION
 
 | Version | Key Changes |
 |---|---|
+| `v2.1.0` | **Analytics Overhaul**: Added lifetime hero statistics, Overall Meter Share pie chart, and Global Excel Export functionality. |
 | `v2.0.1` | **Bug Fix & Polish**: Fixed sequential reading deletion chain-repair bug (used `createdAt` as chronological tie-breaker). Appended explicit Tariff Snapshots into both PDF and Excel cycle exports. Added `appliedSlabRateSnapshot` to UI dropdown history rows. |
 | `v2.0.0` | **Major Architecture Update**: Implemented Snapshot architecture for billing cycles, centralized cost calculation, input sanitization, automated consumption chain repair, UI enhancements (Slab Viewer, Badges), System Initialization Wizard (`/welcome`), and Meter Color Themes. |
 | `v1.6.15` | Updated package versions, fixed favicon path to use `logo.png` |

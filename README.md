@@ -24,8 +24,10 @@ TrackMyWatts is a personal, full-stack web application designed to digitize and 
     - **Meter Strategy:** Switch the active general-purpose meter to strategically manage consumption and avoid higher tariff brackets.
     - **Slab Rate Management:** Full CRUD (Create, Read, Update, Delete) functionality for electricity tariff structures. Add new slab rate configurations with dynamic rules for different consumption levels.
 - **Data Analytics:** A dedicated analytics page with charts to visualize historical consumption and costs per billing cycle, turning raw data into actionable insights.
+- **Data Export:** Generate professional PDF statements and multi-sheet Excel reports containing full billing cycle summaries, tariff snapshots, and raw readings.
+- **Onboarding Wizard:** Zero-state system initialization wizard ensures seamless setup for first-time users.
 - **Responsive Design:** A mobile-first interface built with TailwindCSS ensures a seamless experience on both desktop and mobile devices.
-- **Modern User Experience:** Features clean user feedback through toast notifications for all actions.
+- **Modern User Experience:** Features clean user feedback through toast notifications, PWA support for offline caching, and responsive typography.
 
 ---
 
@@ -34,12 +36,13 @@ TrackMyWatts is a personal, full-stack web application designed to digitize and 
 This project is a full MERN stack application deployed as a single service.
 
 - **Frontend:**
-    - **React** (with Vite)
+    - **React 19** (with Vite)
     - **React Router** for page navigation
     - **TailwindCSS** for styling
     - **Recharts** for data visualization
     - **Axios** for API communication
-    - **React-Toastify** for user notifications
+    - **jsPDF & ExcelJS** for client-side data export
+    - **PWA Support** via Vite plugins
 
 - **Backend:**
     - **Node.js**
@@ -67,47 +70,26 @@ To run this project on your local machine, follow these steps.
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/sabith2000/track-my-watts.git](https://github.com/sabith2000/track-my-watts.git)
+    git clone https://github.com/sabith2000/track-my-watts.git
     cd track-my-watts
     ```
 
-2.  **Backend Setup:**
-    - Navigate to the server directory:
-      ```bash
-      cd server
-      ```
-    - Install backend dependencies:
-      ```bash
-      npm install
-      ```
+2.  **Environment Variables:**
     - Create a `.env` file in the `server` directory and add your MongoDB connection string:
       ```
       # /server/.env
       MONGODB_URI=your_mongodb_connection_string_here
       PORT=5001
       ```
-    - Start the backend server:
-      ```bash
-      npm start
-      ```
-      The server will be running on `http://localhost:5001`.
 
-3.  **Frontend Setup:**
-    - Open a **new terminal** and navigate to the client directory from the project root:
-      ```bash
-      cd client
-      ```
-    - Install frontend dependencies:
+3.  **Install & Run with Concurrently:**
+    - Run the following command from the project root to install all dependencies for both client and server, and start both development servers simultaneously:
       ```bash
       npm install
-      ```
-    - The frontend is already configured to proxy API requests to the backend. No `.env` file is needed for the client in local development.
-    - Start the frontend development server:
-      ```bash
       npm run dev
       ```
-      The application will be accessible at `http://localhost:5173` (or another port if 5173 is in use).
+    - The client application will be accessible at `http://localhost:5173` and the server at `http://localhost:5001`.
 
 ---
 
-After creating this file, you can commit it and push it to your GitHub repository. It will then appear as the front page of your repository, professionally explaining your project to anyone who visits.
+See [CHANGELOG.md](./CHANGELOG.md) for version history.

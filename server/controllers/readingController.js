@@ -282,3 +282,34 @@ exports.deleteAllReadingsGlobally = async (req, res) => {
     res.status(500).json({ message: 'Server error while attempting to delete all readings.', details: error.message });
   }
 };
+
+// @desc    Get the latest reading for a specific meter
+// @route   GET /api/readings/latest/:meterId
+// @access  Public
+exports.getLatestReadingForMeter = async (req, res) => {
+  try {
+    const { meterId } = req.params;
+
+    const meterExists = await Meter.findById(meterId);
+    if (!meterExists) {
+      return res.status(404).json({ message: 'Meter not found.' });
+    }
+
+    const latestReading = await Reading.findOne({ meter: meterId })
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
+
+    if (!latestReading) {
+      return res.status(200).json(null);
+    }
+
+    res.status(200).json({
+      readingValue: latestReading.readingValue,
+      date: latestReading.date,
+      unitsConsumedSincePrevious: latestReading.unitsConsumedSincePrevious
+    });
+  } catch (error) {
+    console.error('Error fetching latest reading for meter:', error);
+    res.status(500).json({ message: 'Server error while fetching latest reading.' });
+  }
+};

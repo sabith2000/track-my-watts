@@ -12,6 +12,14 @@ const getCurrentLocalDateTimeString = () => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const formatHintDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+};
+
 function AddReadingForm({ onReadingAdded, availableMeters, initialMeterId = '', isModal = false, onCancel }) {
   const [meterId, setMeterId] = useState(initialMeterId);
   const [date, setDate] = useState(getCurrentLocalDateTimeString()); 
@@ -22,6 +30,10 @@ function AddReadingForm({ onReadingAdded, availableMeters, initialMeterId = '', 
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Latest reading hint state
+  const [latestReading, setLatestReading] = useState(null);
+  const [latestReadingLoading, setLatestReadingLoading] = useState(false);
+
   // Update meterId if initialMeterId changes (e.g. opening different modals)
   useEffect(() => {
     if (initialMeterId) {
@@ -30,6 +42,38 @@ function AddReadingForm({ onReadingAdded, availableMeters, initialMeterId = '', 
       setMeterId(availableMeters[0]._id);
     }
   }, [initialMeterId, availableMeters]);
+
+  // Fetch latest reading when meterId changes
+  useEffect(() => {
+    if (!meterId) {
+      setLatestReading(null);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchLatestReading = async () => {
+      setLatestReadingLoading(true);
+      setLatestReading(null);
+      try {
+        const response = await apiClient.get(`/readings/latest/${meterId}`);
+        if (!cancelled) {
+          setLatestReading(response.data); // null if no reading exists
+        }
+      } catch (err) {
+        // Silently fail — don't block the form
+        if (!cancelled) {
+          setLatestReading(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLatestReadingLoading(false);
+        }
+      }
+    };
+
+    fetchLatestReading();
+    return () => { cancelled = true; };
+  }, [meterId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -97,6 +141,33 @@ function AddReadingForm({ onReadingAdded, availableMeters, initialMeterId = '', 
           </select>
         </div>
 
+        {/* Latest Reading Hint */}
+        {meterId && (
+          <div className="transition-all duration-200">
+            {latestReadingLoading ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 animate-pulse">
+                <div className="h-3 bg-gray-200 rounded w-24 mb-2"></div>
+                <div className="h-5 bg-gray-200 rounded w-32 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-36"></div>
+              </div>
+            ) : latestReading ? (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Latest Reading</p>
+                <p className="text-lg font-extrabold text-indigo-700">
+                  {latestReading.readingValue.toLocaleString('en-IN')} <span className="text-sm font-medium text-indigo-500">units</span>
+                </p>
+                <p className="text-xs text-indigo-400 mt-0.5">
+                  Recorded on: <span className="font-medium text-indigo-500">{formatHintDate(latestReading.date)}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="text-xs text-gray-400">No previous readings for this meter. This will be a baseline reading.</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
@@ -138,4 +209,4 @@ function AddReadingForm({ onReadingAdded, availableMeters, initialMeterId = '', 
   );
 }
 
-export default AddReadingForm;
+export default AddReadingForm;

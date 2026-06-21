@@ -10,3 +10,49 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* --- Export Button Fill Animation (Left-to-Right Wipe) --- */
+@layer components {
+  .btn-export {
+    position: relative;
+    overflow: hidden;
+    z-index: 0;
+    transition: color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.1s ease;
+  }
+  .btn-export::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: inherit;
+  }
+  .btn-export:hover::before {
+    transform: scaleX(1);
+  }
+  .btn-export:active {
+    transform: scale(0.95);
+  }
+
+  /* PDF variant */
+  .btn-export-pdf::before {
+    background-color: #e11d48; /* rose-600 */
+  }
+  .btn-export-pdf:hover {
+    color: #fff;
+    border-color: #e11d48;
+    box-shadow: 0 2px 8px rgba(225, 29, 72, 0.25);
+  }
+
+  /* Excel variant */
+  .btn-export-excel::before {
+    background-color: #059669; /* emerald-600 */
+  }
+  .btn-export-excel:hover {
+    color: #fff;
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+  }
+}

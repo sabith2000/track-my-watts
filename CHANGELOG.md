@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1] - 2026-06-21
+### Changed
+- **Export Button Interactions:** Added premium left-to-right color fill animation on hover (PDF → rose, Excel → emerald), smooth 280ms transition, and `scale(0.95)` active press feedback. Applied consistently across all export buttons (hero card footer, history row desktop/tablet, history row mobile). Idle state remains clean with subtle outlines.
+
+## [2.2.0] - 2026-06-21
+### Added
+- **Latest Reading Hint:** The Add Reading dialog now shows the meter's most recent recorded reading (value + date) as contextual guidance when a meter is selected, helping prevent accidental lower readings.
+- **New API Endpoint:** `GET /api/readings/latest/:meterId` — returns the latest reading for a given meter.
+
+### Changed
+- **Hero Card Redesign:** Renamed "Current Active Cycle" to "Current Billing Cycle" for cleaner wording. Split the long rate badge into a compact "Live Estimate" status pill and a separate metadata line showing the active rate configuration. Relocated export buttons (PDF/Excel) from the gradient header to a dedicated footer bar for better visual hierarchy.
+- **Closed Cycle Cards:** Replaced the bulky inline "🔒 Finalized (Rate: ...)" badge with a clean subtitle row using a lock icon, dot separator, and subtle typography — keeping rate info visible without dominating the card.
+
 ## [2.1.1] - 2026-06-10
 ### Changed
 - **Documentation & URL Update:** Updated documentation to reflect the new V2 Render deployment URL (`trackmywatts-v2.onrender.com`).

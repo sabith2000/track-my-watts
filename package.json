@@ -1,6 +1,6 @@
 {
   "name": "meter-tracker",
-  "version": "2.1.1",
+  "version": "2.2.1",
   "description": "Full stack electricity meter tracking application",
   "main": "server/server.js",
   "scripts": {

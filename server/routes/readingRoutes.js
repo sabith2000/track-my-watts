@@ -7,7 +7,8 @@ const {
   getReadingById,
   updateReading,
   deleteReading,
-  deleteAllReadingsGlobally
+  deleteAllReadingsGlobally,
+  getLatestReadingForMeter
 } = require('../controllers/readingController');
 
 router.route('/')
@@ -17,9 +18,11 @@ router.route('/')
 router.route('/action/delete-all-globally')
     .delete(deleteAllReadingsGlobally);
 
+router.get('/latest/:meterId', getLatestReadingForMeter);
+
 router.route('/:id')
   .get(getReadingById)
   .put(updateReading)
   .delete(deleteReading);
 
-module.exports = router;
+module.exports = router;

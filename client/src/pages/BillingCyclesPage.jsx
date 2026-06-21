@@ -64,46 +64,28 @@ const ActiveCycleCard = ({ cycle, onExport, loadingToken }) => {
     return (
         <div className="bg-white rounded-xl shadow-lg border border-indigo-100 overflow-hidden mb-8 transition-shadow hover:shadow-xl">
             {/* Header Gradient */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="relative flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-6">
+                <div className="flex items-center gap-2.5 mb-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <h2 className="text-white font-bold text-xl tracking-wide">
+                        Current Billing Cycle
+                    </h2>
+                </div>
+                <p className="text-slate-300 text-sm font-medium ml-5">Active since {formatDate(cycle.startDate)}</p>
+                {cycle.rateName && (
+                    <div className="mt-3 ml-5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Live Estimate
                         </span>
-                        <h2 className="text-white font-bold text-lg tracking-wide">
-                            Current Active Cycle
-                        </h2>
+                        <span className="text-slate-400 text-xs">
+                            Estimation using: <span className="text-slate-300 font-medium">{cycle.rateName}</span>
+                        </span>
                     </div>
-                    {cycle.rateName && (
-                        <div className="mb-2">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100/20 text-emerald-100 border border-emerald-400/30">🟢 Live Estimate (Rate: {cycle.rateName})</span>
-                        </div>
-                    )}
-                    <p className="text-slate-300 text-sm font-medium">Since {formatDate(cycle.startDate)}</p>
-                </div>
-                
-                {/* Export Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                    <button 
-                        onClick={(e) => onExport(e, cycle._id, 'pdf')} 
-                        disabled={loadingToken !== null}
-                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded shadow-sm transition-colors border border-rose-500 ${loadingToken === `${cycle._id}-pdf` ? 'opacity-70 cursor-wait' : ''}`}
-                    >
-                        {loadingToken === `${cycle._id}-pdf` ? <LoaderIcon /> : <PdfIcon />}
-                        <span className="hidden lg:inline">Statement (PDF)</span>
-                        <span className="lg:hidden">PDF</span>
-                    </button>
-                    <button 
-                        onClick={(e) => onExport(e, cycle._id, 'excel')} 
-                        disabled={loadingToken !== null}
-                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded shadow-sm transition-colors border border-emerald-500 ${loadingToken === `${cycle._id}-excel` ? 'opacity-70 cursor-wait' : ''}`}
-                    >
-                         {loadingToken === `${cycle._id}-excel` ? <LoaderIcon /> : <ExcelIcon />}
-                         <span className="hidden lg:inline">Worksheet (Excel)</span>
-                         <span className="lg:hidden">Excel</span>
-                    </button>
-                </div>
+                )}
             </div>
 
             {/* Big Stats */}
@@ -153,6 +135,26 @@ const ActiveCycleCard = ({ cycle, onExport, loadingToken }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Export Footer Bar */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <button 
+                    onClick={(e) => onExport(e, cycle._id, 'pdf')} 
+                    disabled={loadingToken !== null}
+                    className={`btn-export btn-export-pdf flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-rose-200 text-rose-600 text-sm font-semibold rounded-lg shadow-sm ${loadingToken === `${cycle._id}-pdf` ? 'opacity-70 cursor-wait' : ''}`}
+                >
+                    {loadingToken === `${cycle._id}-pdf` ? <LoaderIcon /> : <PdfIcon />}
+                    Statement (PDF)
+                </button>
+                <button 
+                    onClick={(e) => onExport(e, cycle._id, 'excel')} 
+                    disabled={loadingToken !== null}
+                    className={`btn-export btn-export-excel flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-emerald-200 text-emerald-600 text-sm font-semibold rounded-lg shadow-sm ${loadingToken === `${cycle._id}-excel` ? 'opacity-70 cursor-wait' : ''}`}
+                >
+                     {loadingToken === `${cycle._id}-excel` ? <LoaderIcon /> : <ExcelIcon />}
+                     Worksheet (Excel)
+                </button>
+            </div>
         </div>
     );
 };
@@ -173,13 +175,20 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                     <div className="flex items-center justify-between sm:justify-start gap-2">
                         <span className="text-sm font-bold text-slate-800">
                             {formatDate(cycle.startDate)} <span className="text-gray-400 mx-1">➔</span> {formatDate(cycle.endDate)}
-                            {cycle.rateName && <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">🔒 Finalized (Rate: {cycle.rateName})</span>}
                         </span>
                         {/* Mobile Chevron */}
                         <div className={`text-gray-400 sm:hidden transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
                              <ChevronIcon isOpen={false} /> 
                         </div>
                     </div>
+                    {cycle.rateName && (
+                        <p className="text-xs text-gray-400 mt-1 ml-0.5 flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-gray-400 flex-shrink-0">
+                                <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
+                            </svg>
+                            <span>Finalized <span className="text-gray-300 mx-0.5">·</span> <span className="text-gray-500 font-medium">{cycle.rateName}</span></span>
+                        </p>
+                    )}
                     
                     {/* MOBILE CLOSED VIEW FIX: Clean Pills */}
                     <div className="sm:hidden flex items-center gap-2 mt-2">
@@ -206,7 +215,7 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                     {/* PDF Button: Icon only on tablet, Text on Large Screens */}
                     <button 
                         onClick={(e) => onExport(e, cycle._id, 'pdf')}
-                        className="flex items-center justify-center h-8 px-2 lg:px-3 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded shadow-sm transition-colors"
+                        className="btn-export btn-export-pdf flex items-center justify-center h-8 px-2 lg:px-3 bg-white border border-rose-200 text-rose-600 rounded shadow-sm"
                         disabled={loadingToken !== null}
                         title="Download PDF"
                     >
@@ -217,7 +226,7 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                     {/* Excel Button: Icon only on tablet, Text on Large Screens */}
                     <button 
                         onClick={(e) => onExport(e, cycle._id, 'excel')}
-                        className="flex items-center justify-center h-8 px-2 lg:px-3 bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded shadow-sm transition-colors"
+                        className="btn-export btn-export-excel flex items-center justify-center h-8 px-2 lg:px-3 bg-white border border-emerald-200 text-emerald-600 rounded shadow-sm"
                         disabled={loadingToken !== null}
                         title="Export Excel"
                     >
@@ -247,10 +256,10 @@ const HistoryRow = ({ cycle, onExport, onDelete, loadingToken }) => {
                     <div className="p-4 bg-gray-50/50 border-t border-indigo-100/50">
                         {/* Mobile-Only Actions Bar */}
                         <div className="flex sm:hidden gap-2 mb-4">
-                            <button onClick={(e) => onExport(e, cycle._id, 'pdf')} className="flex-1 py-2 bg-white border border-rose-200 text-rose-600 text-xs font-bold rounded shadow-sm flex justify-center items-center gap-2">
+                            <button onClick={(e) => onExport(e, cycle._id, 'pdf')} className="btn-export btn-export-pdf flex-1 py-2 bg-white border border-rose-200 text-rose-600 text-xs font-bold rounded shadow-sm flex justify-center items-center gap-2">
                                 <PdfIcon /> Statement
                             </button>
-                            <button onClick={(e) => onExport(e, cycle._id, 'excel')} className="flex-1 py-2 bg-white border border-emerald-200 text-emerald-600 text-xs font-bold rounded shadow-sm flex justify-center items-center gap-2">
+                            <button onClick={(e) => onExport(e, cycle._id, 'excel')} className="btn-export btn-export-excel flex-1 py-2 bg-white border border-emerald-200 text-emerald-600 text-xs font-bold rounded shadow-sm flex justify-center items-center gap-2">
                                 <ExcelIcon /> Excel
                             </button>
                             <button onClick={(e) => onDelete(e, cycle)} className="py-2 px-3 bg-white border border-red-200 text-red-500 rounded shadow-sm hover:bg-red-50">

@@ -3,8 +3,8 @@
 > **File:** `context.md`
 > **Location:** Project Root (`/context.md`)
 > **Purpose:** This is the **single source of truth** for any AI model (Claude, Gemini, or any other) working on this project. Read this file FIRST, in its entirety, before making any changes to the codebase.
-> **Last Updated:** June 10, 2026
-> **Current Version:** `v2.1.1`
+> **Last Updated:** June 21, 2026
+> **Current Version:** `v2.2.1`
 
 ---
 
@@ -344,6 +344,7 @@ All endpoints are prefixed with `/api`. There is **no authentication** on any en
 |---|---|---|
 | `GET` | `/api/readings` | Get all readings (supports query params: `meterId`, `billingCycleId`, `startDate`, `endDate`, `limit`, `page`) |
 | `POST` | `/api/readings` | Add a new reading (body: `meterId`, `date`, `readingValue`, optional `notes`, `isEstimated`) |
+| `GET` | `/api/readings/latest/:meterId` | Get the latest reading for a specific meter (returns `readingValue`, `date`, `unitsConsumedSincePrevious`) |
 | `GET` | `/api/readings/:id` | Get a single reading by ID |
 | `PUT` | `/api/readings/:id` | Update a reading |
 | `DELETE` | `/api/readings/:id` | Delete a single reading |
@@ -603,7 +604,7 @@ The Settings page allows the user to "switch" which general-purpose meter is act
 
 ## 7. STATE OF THE APPLICATION
 
-### Current Version: `v2.1.1`
+### Current Version: `v2.2.1`
 
 ### Version Tracking
 
@@ -658,6 +659,8 @@ The version is displayed in the app footer via `import.meta.env.VITE_APP_VERSION
 
 | Version | Key Changes |
 |---|---|
+| `v2.2.1` | **Export Button Polish**: Left-to-right color fill animation on hover, active press feedback, applied consistently to all PDF/Excel export buttons. |
+| `v2.2.0` | **UI/UX Improvements**: Hero card redesign (cleaner title, split rate badge, footer export buttons), closed cycle card cleanup (compact finalized rate subtitle), Add Reading dialog enhancement (latest reading contextual hint), new `GET /api/readings/latest/:meterId` endpoint. |
 | `v2.1.1` | **Documentation & URL Update**: Updated deployment URL to v2 and documented chain recalculation fix. |
 | `v2.1.0` | **Analytics Overhaul**: Added lifetime hero statistics, Overall Meter Share pie chart, and Global Excel Export functionality. |
 | `v2.0.1` | **Bug Fix & Polish**: Fixed sequential reading deletion chain-repair bug (used `createdAt` as chronological tie-breaker). Appended explicit Tariff Snapshots into both PDF and Excel cycle exports. Added `appliedSlabRateSnapshot` to UI dropdown history rows. |

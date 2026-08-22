@@ -1,7 +1,7 @@
 // client/src/pages/BillingCyclesPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import { exportToExcel, exportToPDF } from '../utils/exportHelper';
 // --- IMPORT THE GLOBAL LOADER ---
 import Loader from '../components/Loader';
@@ -348,7 +348,7 @@ function BillingCyclesPage() {
       setBillingCycles(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError('Failed to load cycles');
-      toast.error('Failed to fetch billing cycles.');
+      notify.error('Failed to fetch billing cycles.');
     } finally {
       setLoading(false);
     }
@@ -366,8 +366,9 @@ function BillingCyclesPage() {
       try {
           if (type === 'pdf') await exportToPDF(cycleId);
           else await exportToExcel(cycleId);
+          notify.success(type === 'pdf' ? 'Statement PDF generated successfully.' : 'Worksheet Excel file generated successfully.');
       } catch (err) {
-          toast.error("Failed to generate report.");
+          notify.error(err, 'Failed to generate report.');
       } finally {
           setLoadingToken(null);
       }
@@ -378,13 +379,13 @@ function BillingCyclesPage() {
     setIsSubmitting(true);
     try {
       await apiClient.post('/billing-cycles/start', { startDate: new Date(newStartDate).toISOString(), notes: newNotes });
-      toast.success("New cycle started!");
+      notify.success('New cycle started!');
       setShowStartForm(false);
       setNewStartDate(todayFormattedForInput());
       setNewNotes('');
       fetchBillingCycles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to start.');
+      notify.error(err, 'Failed to start cycle.');
     } finally { setIsSubmitting(false); }
   };
 
@@ -393,11 +394,11 @@ function BillingCyclesPage() {
     setIsSubmitting(true);
     try {
       await apiClient.delete(`/billing-cycles/${cycleToDelete._id}`);
-      toast.success("Cycle deleted.");
+      notify.success('Cycle deleted.');
       setCycleToDelete(null);
       fetchBillingCycles();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Delete failed.");
+      notify.error(err, 'Failed to delete cycle.');
     } finally { setIsSubmitting(false); }
   };
 

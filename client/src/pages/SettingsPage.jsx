@@ -1,7 +1,7 @@
 // client/src/pages/SettingsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import SlabRateManager from '../components/SlabRateManager';
 import Loader from '../components/Loader';
 
@@ -94,7 +94,7 @@ function SettingsPage() {
       } catch (e) { console.log("Settings endpoint silent fail"); }
 
     } catch (err) {
-      toast.error('Failed to load settings data.');
+      notify.error('Failed to load settings data.');
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ function SettingsPage() {
 
   const handleAddMeter = async (e) => {
     e.preventDefault();
-    if (!newMeterName.trim()) { toast.warn("Name cannot be empty."); return; }
+    if (!newMeterName.trim()) { notify.warn("Name cannot be empty."); return; }
     
     setIsAddingMeter(true);
     try {
@@ -144,11 +144,11 @@ function SettingsPage() {
           isGeneralPurpose: newMeterIsGeneralPurpose,
           isCurrentlyActiveGeneral: newMeterIsGeneralPurpose ? (generalPurposeMeters.length === 0) : false
       });
-      toast.success("Meter added successfully!");
+      notify.success('Meter added successfully!');
       closeAddMeterModal();
       loadAllData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add meter.');
+      notify.error(err, 'Failed to add meter.');
     } finally {
       setIsAddingMeter(false);
     }
@@ -156,12 +156,12 @@ function SettingsPage() {
 
   const handleSaveMeter = async (e) => {
     e.preventDefault();
-    if (!editingMeterName.trim()) { toast.warn("Name cannot be empty."); return; }
+    if (!editingMeterName.trim()) { notify.warn("Name cannot be empty."); return; }
     
     setIsUpdating(true);
     try {
       await apiClient.put(`/meters/${editingMeterId}`, { name: editingMeterName, description: editingMeterDescription, colorTheme: editingMeterColorTheme });
-      toast.success("Meter updated successfully!");
+      notify.success('Meter updated successfully!');
       closeEditMeterModal();
       // Partial refresh
       const response = await apiClient.get('/meters');
@@ -169,7 +169,7 @@ function SettingsPage() {
       setMeters(allMeters);
       setGeneralPurposeMeters(allMeters.filter(m => m.isGeneralPurpose));
     } catch (err) { 
-        toast.error('Update failed.'); 
+        notify.error(err, 'Failed to update meter.'); 
     } finally { 
         setIsUpdating(false); 
     }
@@ -182,7 +182,7 @@ function SettingsPage() {
     try {
       setSelectedActiveMeterId(meterId); // Optimistic UI update
       await apiClient.put(`/meters/${meterId}/set-active-general`);
-      toast.success('Active meter updated!');
+      notify.success('Active meter updated!', { toastId: 'meter-active-update' });
       
       // Refresh meters to update UI tags from backend source of truth
       const response = await apiClient.get('/meters');
@@ -190,7 +190,7 @@ function SettingsPage() {
       setMeters(allMeters);
       setGeneralPurposeMeters(allMeters.filter(m => m.isGeneralPurpose));
     } catch (err) { 
-        toast.error('Failed to update active meter.'); 
+        notify.error(err, 'Failed to update active meter.'); 
         loadAllData(); // Revert on error
     } finally { 
         setIsUpdatingMeter(false); 
@@ -203,7 +203,7 @@ function SettingsPage() {
     if (newTarget === consumptionTarget) return; 
 
     if (isNaN(newTarget) || newTarget <= 0) { 
-        toast.warn("Please enter a valid, positive number."); 
+        notify.warn("Please enter a valid, positive number."); 
         return; 
     }
     setShowTargetConfirm(true);
@@ -214,11 +214,11 @@ function SettingsPage() {
     setIsUpdating(true);
     try {
       await apiClient.put('/settings', { consumptionTarget: newTarget });
-      toast.success("Consumption target updated successfully!");
+      notify.success('Consumption target updated successfully!');
       setConsumptionTarget(newTarget);
       setShowTargetConfirm(false); 
     } catch (err) { 
-        toast.error("Failed to save settings."); 
+        notify.error(err, 'Failed to save settings.'); 
     } finally { 
         setIsUpdating(false); 
     }
@@ -235,14 +235,14 @@ function SettingsPage() {
 
   // --- HANDLERS: SLABS ---
   const handleSaveActiveSlabConfig = async () => {
-    if (!selectedActiveSlabConfigId) { toast.warn("Please select a config."); return; }
+    if (!selectedActiveSlabConfigId) { notify.warn("Please select a config."); return; }
     setIsUpdatingSlab(true);
     try {
       await apiClient.put(`/slabs/${selectedActiveSlabConfigId}/activate`);
-      toast.success('Slab configuration activated!');
+      notify.success('Slab configuration activated!');
       const response = await apiClient.get('/slabs');
       setSlabConfigs(response.data || []);
-    } catch (err) { toast.error('Activation failed.'); }
+    } catch (err) { notify.error(err, 'Failed to activate slab configuration.'); }
     finally { setIsUpdatingSlab(false); }
   };
 

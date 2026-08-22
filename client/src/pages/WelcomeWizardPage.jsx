@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../services/api';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import SlabRuleInputs from '../components/SlabRuleInputs';
 
 const COLOR_OPTIONS = [
@@ -65,7 +65,7 @@ function WelcomeWizardPage() {
   const handleNextStep1 = () => {
     const validate = (arr) => arr.every(s => s.fromUnit !== '' && s.toUnit !== '' && s.rate !== '' && parseFloat(s.fromUnit) >= 0);
     if (!configName.trim() || !validate(slabsLTE500) || !validate(slabsGT500)) {
-      toast.warn('Please fill all tariff fields correctly.');
+      notify.warn('Please fill all tariff fields correctly.');
       return;
     }
     setStep(2);
@@ -96,14 +96,14 @@ function WelcomeWizardPage() {
 
   const handleNextStep2 = () => {
     if (meters.length === 0) {
-      toast.warn("Please add at least one meter to continue.");
+      notify.warn('Please add at least one meter to continue.');
       return;
     }
     setStep(3);
   };
 
   const handleFinishWizard = async () => {
-    if (!cycleStartDate) { toast.warn('Please select a start date.'); return; }
+    if (!cycleStartDate) { notify.warn('Please select a start date.'); return; }
     setIsSubmitting(true);
     
     try {
@@ -130,11 +130,11 @@ function WelcomeWizardPage() {
         notes: 'Initial Billing Cycle'
       });
       
-      toast.success('Setup Complete! Welcome to Track My Watts.');
+      notify.success('Setup Complete! Welcome to Track My Watts.');
       window.location.href = '/'; 
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || 'Failed to initialize the system. Please check your data and try again.');
+      notify.error(error, 'Failed to initialize the system. Please check your data and try again.');
       setIsSubmitting(false); // Let them fix it and retry
     }
   };

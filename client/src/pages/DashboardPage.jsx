@@ -1,7 +1,7 @@
 // client/src/pages/DashboardPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import AddReadingForm from '../components/AddReadingForm'; 
 import MeterCard from '../components/MeterCard';
 import Loader from '../components/Loader';
@@ -83,7 +83,7 @@ function DashboardPage() {
       console.error("Error fetching dashboard data:", err);
       const errorMessage = err.response?.data?.message || 'Failed to fetch dashboard summary.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      notify.error(errorMessage);
       setDashboardData(null);
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ function DashboardPage() {
     setIsClosingCycle(true);
 
     if (!governmentCollectionDate) {
-      toast.warn("Government Collection Date is required.");
+      notify.warn("Government Collection Date is required.");
       setIsClosingCycle(false);
       return;
     }
@@ -120,12 +120,12 @@ function DashboardPage() {
     const currentDateObj = new Date(todayFormattedForInput());
 
     if (collectionDateObj > currentDateObj) {
-      toast.warn("Government Collection Date cannot be in the future.");
+      notify.warn("Government Collection Date cannot be in the future.");
       setIsClosingCycle(false);
       return;
     }
     if (dashboardData?.currentBillingCycle?.startDate && collectionDateObj < new Date(dashboardData.currentBillingCycle.startDate)) {
-      toast.warn("Collection Date cannot be before the current cycle's start date.");
+      notify.warn("Collection Date cannot be before the current cycle's start date.");
       setIsClosingCycle(false);
       return;
     }
@@ -137,7 +137,7 @@ function DashboardPage() {
         notesForNewCycle
       };
       const response = await apiClient.post('/billing-cycles/close-current', payload);
-      toast.success(response.data.message || 'Billing cycle closed and new one started successfully!');
+      notify.success(response.data.message || 'Billing cycle closed and new one started successfully!');
       setShowCloseCycleForm(false);
       setGovernmentCollectionDate(todayFormattedForInput());
       setNotesForClosedCycle('');
@@ -145,7 +145,7 @@ function DashboardPage() {
       fetchDashboardData();
     } catch (err) {
       console.error("Error closing billing cycle:", err);
-      toast.error(err.response?.data?.message || 'Failed to close billing cycle.');
+      notify.error(err, 'Failed to close billing cycle.');
     } finally {
       setIsClosingCycle(false);
     }

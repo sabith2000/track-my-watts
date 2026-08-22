@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-08-23
+### Added
+- **Centralized Notification Helper:** Created `client/src/utils/toast.js` exporting a `notify` helper that wraps React-Toastify with standardized severity durations (success 3s, error 4.5s, warn 4s, info 3.5s), automated Axios/backend error extraction, and optional `toastId`-based deduplication for rapid actions.
+- **Export Success Feedback:** `BillingCyclesPage` now displays accurate success toasts upon PDF/Excel generation ("Statement PDF generated successfully." / "Worksheet Excel file generated successfully.").
+
+### Changed
+- **Toast Visual Refresh:** Replaced React-Toastify's default `colored` theme with a custom Track My Watts design system: emerald success tints, rose error tints, amber warning tints, indigo info tints, Inter font, rounded-xl cards, slim 2.5px gradient progress bars, and responsive mobile positioning below the 64px sticky navbar.
+- **ToastContainer Configuration:** Updated global container to `theme="light"`, `limit={3}`, `newestOnTop={true}`, reduced default autoClose from 5000ms to 3500ms.
+- **Error Message Standardization:** All catch blocks across `SettingsPage`, `SlabRateManager`, `DashboardPage`, `ReadingsPage`, `BillingCyclesPage`, `AnalyticsPage`, and `WelcomeWizardPage` now pass error objects to `notify.error()` for automatic backend message extraction instead of suppressing server validation details with hardcoded strings.
+- **Validation Severity Fix:** Changed form validation notifications in `SlabRateManager` from `error` to `warn` severity for consistency with all other form validation across the application.
+- **Migrated All Pages:** All 6 pages and 1 component now use the centralized `notify` helper instead of direct `toast.*` imports.
+
 ## [2.2.1] - 2026-06-21
 ### Changed
 - **Export Button Interactions:** Added premium left-to-right color fill animation on hover (PDF → rose, Excel → emerald), smooth 280ms transition, and `scale(0.95)` active press feedback. Applied consistently across all export buttons (hero card footer, history row desktop/tablet, history row mobile). Idle state remains clean with subtle outlines.

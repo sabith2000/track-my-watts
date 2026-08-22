@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { exportLifetimeAnalyticsToExcel } from '../utils/exportHelper';
 import apiClient from '../services/api';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import Loader from '../components/Loader'; // --- NEW IMPORT ---
 
 // ... (Keep COLORS and CustomBreakdownTooltip) ...
@@ -123,9 +123,9 @@ function AnalyticsPage() {
     setLoading(true);
     try {
         await exportLifetimeAnalyticsToExcel(cycleSummaryData, meterBreakdownData, summaryStats);
-        toast.success("Lifetime Analytics Exported successfully!");
+        notify.success('Lifetime analytics report generated successfully.');
     } catch (err) {
-        toast.error("Failed to export analytics.");
+        notify.error(err, 'Failed to export analytics.');
     } finally {
         setLoading(false);
     }

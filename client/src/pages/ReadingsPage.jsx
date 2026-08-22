@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import AddReadingForm from '../components/AddReadingForm';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import Loader from '../components/Loader';
 
 // --- ICONS ---
@@ -64,7 +64,7 @@ function ReadingsPage() {
       console.error("Error fetching readings:", err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch readings.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      notify.error(errorMessage);
       setReadings([]); 
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ function ReadingsPage() {
       setAvailableMeters(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching meters:", err);
-      toast.error("Failed to fetch meters list.");
+      notify.error("Failed to fetch meters list.");
       setAvailableMeters([]);
     }
   }, []);
@@ -123,7 +123,7 @@ function ReadingsPage() {
     setIsDeleting(true);
     try {
       await apiClient.delete(`/readings/${readingToDelete._id}`);
-      toast.success('Reading deleted successfully.');
+      notify.success('Reading deleted successfully.');
       closeDeleteConfirm();
       const currentFilters = {
         meterId: filterMeterId,
@@ -137,7 +137,7 @@ function ReadingsPage() {
       }
     } catch (err) {
       console.error("Error deleting reading:", err);
-      toast.error(err.response?.data?.message || "Failed to delete reading.");
+      notify.error(err, 'Failed to delete reading.');
     } finally {
       setIsDeleting(false);
     }
@@ -155,19 +155,19 @@ function ReadingsPage() {
 
   const handleConfirmDeleteAllReadings = async () => {
     if (deleteAllConfirmationText !== DELETE_ALL_CONFIRM_PHRASE) {
-      toast.warn(`Incorrect phrase. Please type "${DELETE_ALL_CONFIRM_PHRASE}" to confirm.`);
+      notify.warn(`Incorrect phrase. Please type "${DELETE_ALL_CONFIRM_PHRASE}" to confirm.`);
       return;
     }
     setIsDeletingAll(true);
     try {
       const response = await apiClient.delete('/readings/action/delete-all-globally');
-      toast.success(response.data.message || `${response.data.deletedCount} readings deleted successfully.`);
+      notify.success(response.data.message || `${response.data.deletedCount} readings deleted successfully.`);
       closeDeleteAllConfirmModal();
       setCurrentPage(1);
       fetchReadings(1, {});
     } catch (err) {
       console.error("Error deleting all readings:", err);
-      toast.error(err.response?.data?.message || "Failed to delete all readings.");
+      notify.error(err, 'Failed to delete all readings.');
     } finally {
       setIsDeletingAll(false);
     }

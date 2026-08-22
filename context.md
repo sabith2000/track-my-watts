@@ -3,8 +3,8 @@
 > **File:** `context.md`
 > **Location:** Project Root (`/context.md`)
 > **Purpose:** This is the **single source of truth** for any AI model (Claude, Gemini, or any other) working on this project. Read this file FIRST, in its entirety, before making any changes to the codebase.
-> **Last Updated:** June 21, 2026
-> **Current Version:** `v2.2.1`
+> **Last Updated:** August 23, 2026
+> **Current Version:** `v2.3.0`
 
 ---
 
@@ -77,7 +77,7 @@ In production, the Express server serves the built React frontend as static file
 | **TailwindCSS** | `3.4.17` | Utility-first CSS framework for all styling |
 | **Recharts** | `2.15.4` | Chart library for analytics (bar charts, sparklines) |
 | **Axios** | `1.9.0` | HTTP client for API communication |
-| **React-Toastify** | `11.0.5` | Toast notification system for user feedback |
+| **React-Toastify** | `11.0.5` | Toast notification system. All pages use the centralized `notify` helper (`client/src/utils/toast.js`) instead of direct `toast` calls. The helper standardizes error extraction, severity durations, and optional deduplication via `toastId`. |
 | **jsPDF** | `4.0.0` | PDF generation for billing cycle export |
 | **jspdf-autotable** | `5.0.7` | Table plugin for jsPDF |
 | **ExcelJS** | `4.4.0` | Excel (.xlsx) file generation for export |
@@ -604,7 +604,7 @@ The Settings page allows the user to "switch" which general-purpose meter is act
 
 ## 7. STATE OF THE APPLICATION
 
-### Current Version: `v2.2.1`
+### Current Version: `v2.3.0`
 
 ### Version Tracking
 
@@ -635,7 +635,7 @@ The version is displayed in the app footer via `import.meta.env.VITE_APP_VERSION
 | **Responsive design** | ✅ Complete | Mobile-first with TailwindCSS, mobile drawer nav |
 | **Meter strategy switching** | ✅ Complete | Switch active meter from Settings |
 | **Consumption target** | ✅ Complete | Configurable target with dashboard progress tracking |
-| **Toast notifications** | ✅ Complete | react-toastify for all user actions |
+| **Toast notifications** | ✅ Complete | react-toastify with centralized `notify` helper and custom UI |
 | **Google AdSense** | ✅ Integrated | Script loaded in index.html |
 | **Modern UI/UX** | ✅ Complete | Gradient header, animations, custom fonts, premium design |
 | **Meter renaming & styling** | ✅ Complete | Edit meter names and select color themes (`colorTheme`) |
@@ -659,6 +659,7 @@ The version is displayed in the app footer via `import.meta.env.VITE_APP_VERSION
 
 | Version | Key Changes |
 |---|---|
+| `v2.3.0` | **Notification Standardization & Visual Refresh**: Centralized `notify` helper, custom UI/UX styling matching Track My Watts design system, automatic Axios backend error extraction, consistent validation severity (`warn`), and PDF/Excel export feedback. |
 | `v2.2.1` | **Export Button Polish**: Left-to-right color fill animation on hover, active press feedback, applied consistently to all PDF/Excel export buttons. |
 | `v2.2.0` | **UI/UX Improvements**: Hero card redesign (cleaner title, split rate badge, footer export buttons), closed cycle card cleanup (compact finalized rate subtitle), Add Reading dialog enhancement (latest reading contextual hint), new `GET /api/readings/latest/:meterId` endpoint. |
 | `v2.1.1` | **Documentation & URL Update**: Updated deployment URL to v2 and documented chain recalculation fix. |

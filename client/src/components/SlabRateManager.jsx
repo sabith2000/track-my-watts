@@ -1,6 +1,6 @@
 // client/src/components/SlabRateManager.jsx
 import React, { useState } from 'react';
-import { toast } from 'react-toastify';
+import notify from '../utils/toast';
 import apiClient from '../services/api';
 import SlabRuleInputs from './SlabRuleInputs';
 
@@ -87,7 +87,7 @@ const SlabRateManager = ({
     setIsSaving(true);
     const validate = (arr) => arr.every(s => s.fromUnit !== '' && s.toUnit !== '' && s.rate !== '' && parseFloat(s.fromUnit) >= 0);
     if (!newConfigName.trim() || !validate(newLte500Slabs) || !validate(newGt500Slabs)) {
-      toast.error("Please fill all fields correctly.");
+      notify.warn('Please fill all fields correctly.');
       setIsSaving(false);
       return;
     }
@@ -103,17 +103,17 @@ const SlabRateManager = ({
     try {
       if (editingConfigId) {
         await apiClient.put(`/slabs/${editingConfigId}`, payload);
-        toast.success("Slab configuration updated!");
+        notify.success('Slab configuration updated!');
       } else {
         payload.isCurrentlyActive = false;
         await apiClient.post('/slabs', payload);
-        toast.success("Slab configuration added!");
+        notify.success('Slab configuration added!');
       }
       setShowForm(false);
       setEditingConfigId(null);
       onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to ${editingConfigId ? 'update' : 'add'} configuration.`);
+      notify.error(err, `Failed to ${editingConfigId ? 'update' : 'add'} configuration.`);
     } finally {
       setIsSaving(false);
     }
@@ -123,11 +123,11 @@ const SlabRateManager = ({
     if (!deleteConfig) return;
     try {
       await apiClient.delete(`/slabs/${deleteConfig._id}`);
-      toast.success("Configuration deleted.");
+      notify.success('Configuration deleted.');
       setDeleteConfig(null);
       onRefresh();
     } catch (err) {
-      toast.error("Failed to delete.");
+      notify.error(err, 'Failed to delete configuration.');
     }
   };
 
